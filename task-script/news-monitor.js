@@ -47,6 +47,16 @@ async function saveNews(siteName, category, title, link) {
 // KONFIGURASI (ditanya saat awal)
 // =====================
 async function askConfig() {
+    // Check for --cron flag
+    if (process.argv.includes('--cron')) {
+        console.log('   [i] Running in CRON mode (automated)');
+        return {
+            type: 'hosted',
+            country: 'Any',
+            windowSize: '1920x1080'
+        };
+    }
+
     console.log('\n--- Configure Browser Session ---\n');
     const answers = await inquirer.prompt([
         {
