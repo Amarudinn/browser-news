@@ -52,7 +52,8 @@ async function askConfig() {
         console.log('   [i] Running in CRON mode (automated)');
         return {
             type: 'hosted',
-            country: 'Any',
+            country: undefined, // "Any" setting
+            nodeId: 'stairs-brush-artefact',
             windowSize: '1920x1080'
         };
     }
