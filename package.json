@@ -1,0 +1,16 @@
+{
+    "name": "browser-cash-scripts",
+    "version": "1.0.0",
+    "description": "Browser automation scripts",
+    "type": "module",
+    "dependencies": {
+        "@browsercash/sdk": "^0.10.0",
+        "@supabase/supabase-js": "^2.95.3",
+        "dotenv": "^17.2.4",
+        "inquirer": "^13.2.2",
+        "playwright": "^1.58.2"
+    },
+    "scripts": {
+        "start": "node runner.js"
+    }
+}
