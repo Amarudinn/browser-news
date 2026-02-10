@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a0b",
+};
 
 export const metadata: Metadata = {
   title: "Browser News — Live Aggregator",
@@ -9,7 +13,6 @@ export const metadata: Metadata = {
     apple: "/browser-news.png",
   },
   manifest: "/manifest.json",
-  themeColor: "#0a0a0b",
 };
 
 export default function RootLayout({
