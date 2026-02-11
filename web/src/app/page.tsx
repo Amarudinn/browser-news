@@ -268,7 +268,7 @@ export default function Home() {
               Latest Updates
             </h2>
             <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
-              Curated from 20+ trusted sources
+              Curated from 28 trusted sources
             </p>
           </div>
 

@@ -8,7 +8,7 @@
 // 2. 1 berita UNIK per situs (skip jika sudah di database)
 // 3. Simpan ke Supabase (tabel: news)
 // 4. Kirim ke Telegram
-// 5. 20 situs: Berita, Crypto, Olahraga
+// 5. 28 situs: Berita, Crypto, Olahraga
 // 6. Otomatis berhenti setelah semua selesai
 
 import 'dotenv/config';
@@ -127,7 +127,7 @@ async function askConfig() {
 let SESSION_CONFIG;
 
 // =====================
-// DAFTAR 20 SITUS
+// DAFTAR 28 SITUS
 // =====================
 const NEWS_SITES = [
     // --- INDONESIA ---
@@ -344,6 +344,115 @@ const NEWS_SITES = [
         type: 'links',
         linkSelector: 'a[href*="/news/"]',
         baseUrl: 'https://www.football365.com'
+    },
+    {
+        name: '90min', category: 'sports',
+        url: 'https://www.90min.com/fr',
+        waitFor: 'a[href*="/posts/"]',
+        type: 'links',
+        linkSelector: 'a[href*="/posts/"]',
+        baseUrl: 'https://www.90min.com',
+        minLen: 20
+    },
+    {
+        name: 'OneFootball', category: 'sports',
+        url: 'https://onefootball.com/en/home',
+        waitFor: 'a[href*="/en/news/"]',
+        type: 'links',
+        linkSelector: 'a[href*="/en/news/"]',
+        baseUrl: 'https://onefootball.com',
+        minLen: 20
+    },
+    {
+        name: 'Bola.com', category: 'sports',
+        url: 'https://www.bola.com/',
+        waitFor: 'a[href*="/read/"]',
+        type: 'links',
+        linkSelector: 'a[href*="/read/"]',
+        baseUrl: 'https://www.bola.com',
+        minLen: 15
+    },
+    {
+        name: 'Yahoo Sports', category: 'sports',
+        url: 'https://sports.yahoo.com/',
+        waitFor: 'a[href*="/article/"]',
+        type: 'links',
+        linkSelector: 'a[href*="/article/"]',
+        baseUrl: 'https://sports.yahoo.com',
+        minLen: 25,
+        excludes: ['Fantasy', 'Sign in', 'Download']
+    },
+    {
+        name: 'Fox Sports', category: 'sports',
+        url: 'https://www.foxsports.com/',
+        waitFor: 'a[href*="/stories/"]',
+        type: 'links',
+        linkSelector: 'a[href*="/stories/"]',
+        baseUrl: 'https://www.foxsports.com',
+        minLen: 20,
+        excludes: ['Watch', 'Subscribe']
+    },
+
+    // --- CRYPTO (tambahan) ---
+    {
+        name: 'BeInCrypto', category: 'crypto',
+        url: 'https://beincrypto.com/',
+        waitFor: 'a',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('a[href*="beincrypto.com/"]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                var href = a.getAttribute('href');
+                if (!href || !text) continue;
+                // Skip category pages, author pages, and short text
+                if (href.indexOf('/author/') !== -1 || href.indexOf('/tag/') !== -1 || href.indexOf('/category/') !== -1) continue;
+                if (text.length > 25 && text.length < 200 && !seen[href]) {
+                    seen[href] = true;
+                    var fullUrl = href.indexOf('http') === 0 ? href : 'https://beincrypto.com' + href;
+                    results.push({ title: text, link: fullUrl });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'CoinGecko News', category: 'crypto',
+        url: 'https://www.coingecko.com/en/news',
+        waitFor: 'a',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            // CoinGecko news page links to external news articles
+            var links = document.querySelectorAll('a[href]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                var href = a.getAttribute('href');
+                if (!href || !text) continue;
+                // Skip internal coingecko links (coin pages, etc) and short text
+                if (href.indexOf('coingecko.com') !== -1) continue;
+                if (text.length > 25 && text.length < 200 && href.indexOf('http') === 0 && !seen[href]) {
+                    seen[href] = true;
+                    results.push({ title: text, link: href });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'CoinDesk', category: 'crypto',
+        url: 'https://www.coindesk.com/',
+        waitFor: 'a[href*="/202"]',
+        type: 'links',
+        linkSelector: 'a[href*="/202"]',
+        baseUrl: 'https://www.coindesk.com',
+        minLen: 25,
+        excludes: ['Subscribe', 'Sign Up', 'Newsletter']
     }
 ];
 
