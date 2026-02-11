@@ -11,8 +11,47 @@ const CATEGORIES = [
   { key: "sports", label: "Sports" },
 ];
 
+// =====================
+// Gemini API Helper
+// =====================
+async function summarizeWithGemini(apiKey: string, url: string): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Read and summarize the news article from the following URL in 3-5 key points. Always respond in English regardless of the article's language. Format the summary with clear and concise bullet points.\n\nURL: ${url}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 500,
+        },
+      }),
+    }
+  );
 
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Gemini API error");
+  }
 
+  const data = await response.json();
+  return (
+    data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary generated."
+  );
+}
+
+// =====================
+// Utility
+// =====================
 function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -25,14 +64,279 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function NewsCard({ item, index }: { item: NewsItem; index: number }) {
+// =====================
+// Settings Modal
+// =====================
+function SettingsModal({
+  open,
+  onClose,
+  apiKey,
+  setApiKey,
+}: {
+  open: boolean;
+  onClose: () => void;
+  apiKey: string;
+  setApiKey: (k: string) => void;
+}) {
+  const [inputVal, setInputVal] = useState(apiKey);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setInputVal(apiKey);
+  }, [apiKey, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const handleSave = () => {
+    const trimmed = inputVal.trim();
+    setApiKey(trimmed);
+    if (trimmed) {
+      localStorage.setItem("gemini_api_key", trimmed);
+    } else {
+      localStorage.removeItem("gemini_api_key");
+    }
+    onClose();
+  };
+
+  const handleRemove = () => {
+    setApiKey("");
+    setInputVal("");
+    localStorage.removeItem("gemini_api_key");
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content"
+        ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+          <h3 className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>
+            ⚙️ Settings
+          </h3>
+          <button onClick={onClose} className="modal-close-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <label
+          className="text-[12px] font-semibold"
+          style={{ color: "var(--text-secondary)", letterSpacing: "0.05em", textTransform: "uppercase" }}
+        >
+          Gemini API Key
+        </label>
+        <input
+          type="password"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          placeholder="AIzaSy..."
+          className="settings-input"
+        />
+        <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginTop: 8, lineHeight: 1.5 }}>
+          Get your free API key from{" "}
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--accent-hover)", textDecoration: "underline" }}
+          >
+            Google AI Studio
+          </a>
+          . Your key is stored locally in your browser and never sent to our server.
+        </p>
+
+        <div className="flex items-center gap-2" style={{ marginTop: 20 }}>
+          <button onClick={handleSave} className="settings-save-btn">
+            Save
+          </button>
+          {apiKey && (
+            <button onClick={handleRemove} className="settings-remove-btn">
+              Remove Key
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================
+// Summary Modal
+// =====================
+function SummaryModal({
+  open,
+  onClose,
+  item,
+  apiKey,
+  onOpenSettings,
+}: {
+  open: boolean;
+  onClose: () => void;
+  item: NewsItem | null;
+  apiKey: string;
+  onOpenSettings: () => void;
+}) {
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || !item) return;
+    setSummary("");
+    setError("");
+
+    if (!apiKey) return;
+
+    let cancelled = false;
+    const doSummarize = async () => {
+      setLoading(true);
+      try {
+        const result = await summarizeWithGemini(apiKey, item.link);
+        if (!cancelled) setSummary(result);
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to summarize");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    doSummarize();
+    return () => { cancelled = true; };
+  }, [open, item, apiKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
+  if (!open || !item) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content summary-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 18 }}>✨</span>
+            <h3 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+              AI Summary
+            </h3>
+          </div>
+          <button onClick={onClose} className="modal-close-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Article info */}
+        <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--bg-base)", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
+          <p className="text-[13px] font-medium line-clamp-2" style={{ color: "var(--text-primary)", marginBottom: 4 }}>
+            {item.title}
+          </p>
+          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+            {item.site_name}
+          </p>
+        </div>
+
+        {/* Content */}
+        {!apiKey ? (
+          <div className="text-center" style={{ padding: "24px 0" }}>
+            <p className="text-[13px]" style={{ color: "var(--text-secondary)", marginBottom: 12 }}>
+              Set your Gemini API key to use AI Summary
+            </p>
+            <button
+              onClick={() => { onClose(); onOpenSettings(); }}
+              className="settings-save-btn"
+            >
+              Open Settings
+            </button>
+          </div>
+        ) : loading ? (
+          <div style={{ padding: "20px 0" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+              <div className="summary-spinner" />
+              <span className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                Gemini is reading the article...
+              </span>
+            </div>
+            <div className="shimmer-bg" style={{ height: 14, width: "100%", marginBottom: 8 }} />
+            <div className="shimmer-bg" style={{ height: 14, width: "90%", marginBottom: 8 }} />
+            <div className="shimmer-bg" style={{ height: 14, width: "75%", marginBottom: 8 }} />
+            <div className="shimmer-bg" style={{ height: 14, width: "60%" }} />
+          </div>
+        ) : error ? (
+          <div style={{ padding: "16px 0" }}>
+            <div style={{ padding: "12px 14px", background: "rgba(239, 68, 68, 0.08)", borderRadius: 10, border: "1px solid rgba(239, 68, 68, 0.15)" }}>
+              <p className="text-[13px]" style={{ color: "#f87171" }}>
+                ⚠️ {error}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="summary-text" style={{ padding: "4px 0" }}>
+            {summary.split("\n").map((line, i) => (
+              <p key={i} className="text-[13px] leading-[1.7]" style={{ color: "var(--text-secondary)", marginBottom: line.trim() ? 6 : 2 }}>
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Footer link */}
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[12px] font-medium"
+            style={{ color: "var(--accent-hover)", textDecoration: "none" }}
+          >
+            Read full article →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================
+// News Card
+// =====================
+function NewsCard({
+  item,
+  index,
+  onSummarize,
+}: {
+  item: NewsItem;
+  index: number;
+  onSummarize: (item: NewsItem) => void;
+}) {
   const badgeClass = `badge badge-${item.category}`;
 
   return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
       className="news-card animate-in"
       style={{ animationDelay: `${index * 40}ms` }}
     >
@@ -52,47 +356,73 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
         </span>
       </div>
 
-      {/* Content area */}
-      <div className="flex flex-col flex-1" style={{ padding: "16px 28px 16px 28px" }}>
-        {/* Title */}
+      {/* Content area — clickable to source */}
+      <a
+        href={item.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex flex-col flex-1 news-card-link"
+        style={{ padding: "16px 28px 16px 28px", textDecoration: "none" }}
+      >
         <h3
           className="text-[14.5px] font-medium leading-[1.55] line-clamp-3 transition-colors duration-200"
           style={{ color: "var(--text-primary)" }}
         >
           {item.title}
         </h3>
-      </div>
+      </a>
 
-      {/* Source — fixed at bottom */}
+      {/* Footer — Source + AI Summary button */}
       <div
         className="flex items-center justify-between"
         style={{
-          padding: "12px 16px",
+          padding: "10px 16px",
           borderTop: "1px solid var(--border-subtle)",
         }}
       >
         <span
-          className="text-[12px] font-medium truncate max-w-[180px]"
+          className="text-[12px] font-medium truncate max-w-[140px]"
           style={{ color: "var(--text-tertiary)" }}
         >
           {item.site_name}
         </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ color: "var(--text-tertiary)", transition: "all 0.2s" }}
-        >
-          <path d="M7 17L17 7" />
-          <path d="M7 7h10v10" />
-        </svg>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSummarize(item);
+            }}
+            className="ai-summary-btn"
+            title="AI Summary"
+          >
+            <span style={{ fontSize: 12 }}>✨</span>
+            <span>Summary</span>
+          </button>
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card-external-link"
+            title="Open article"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M7 17L17 7" />
+              <path d="M7 7h10v10" />
+            </svg>
+          </a>
+        </div>
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -161,44 +491,105 @@ function CategoryDropdown({ category, setCategory }: { category: string; setCate
   );
 }
 
+// =====================
+// Main Page
+// =====================
+const PAGE_SIZE = 18;
+
 export default function Home() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(18);
+  const [categoryCount, setCategoryCount] = useState(0);
 
-  const fetchNews = useCallback(async () => {
-    setLoading(true);
+  // AI Summary state
+  const [apiKey, setApiKey] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [summaryItem, setSummaryItem] = useState<NewsItem | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  const newsRef = useRef<NewsItem[]>([]);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("gemini_api_key");
+    if (saved) setApiKey(saved);
+  }, []);
+
+  const fetchPage = useCallback(async (from: number, cat: string) => {
+    const to = from + PAGE_SIZE - 1;
+
     let query = supabase
       .from("news")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(50);
+      .range(from, to);
 
-    if (category !== "all") {
-      query = query.eq("category", category);
+    if (cat !== "all") {
+      query = query.eq("category", cat);
     }
 
-    const { data, error } = await query;
+    return query;
+  }, []);
+
+  // Initial fetch & category change
+  useEffect(() => {
+    let cancelled = false;
+    const doFetch = async () => {
+      setLoading(true);
+      const { data, error, count } = await fetchPage(0, category);
+      if (!cancelled && !error && data) {
+        setNews(data);
+        newsRef.current = data;
+        setCategoryCount(count || 0);
+      }
+
+      const { count: total } = await supabase
+        .from("news")
+        .select("*", { count: "exact", head: true });
+      if (!cancelled) {
+        setTotalCount(total || 0);
+        setLoading(false);
+      }
+    };
+    doFetch();
+    return () => { cancelled = true; };
+  }, [category, fetchPage]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    const from = newsRef.current.length;
+    const { data, error, count } = await fetchPage(from, category);
+    if (!error && data) {
+      const updated = [...newsRef.current, ...data];
+      setNews(updated);
+      newsRef.current = updated;
+      setCategoryCount(count || 0);
+    }
+    setLoadingMore(false);
+  };
+
+  const refresh = async () => {
+    setLoading(true);
+    const { data, error, count } = await fetchPage(0, category);
     if (!error && data) {
       setNews(data);
+      newsRef.current = data;
+      setCategoryCount(count || 0);
     }
-
-    const { count } = await supabase
+    const { count: total } = await supabase
       .from("news")
       .select("*", { count: "exact", head: true });
-    setTotalCount(count || 0);
-
+    setTotalCount(total || 0);
     setLoading(false);
-    setVisibleCount(18);
-  }, [category]);
+  };
 
-  useEffect(() => {
-    fetchNews();
-    const interval = setInterval(fetchNews, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchNews]);
+  const handleSummarize = (item: NewsItem) => {
+    setSummaryItem(item);
+    setSummaryOpen(true);
+  };
 
   // Register service worker for PWA
   useEffect(() => {
@@ -209,8 +600,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
+      {/* ─── Modals ─── */}
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+      />
+      <SummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        item={summaryItem}
+        apiKey={apiKey}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
       {/* ─── Header ─── */}
-      {/* Header with margin-bottom */}
       <header
         className="sticky top-0 z-50 backdrop-blur-xl"
         style={{
@@ -241,9 +646,21 @@ export default function Home() {
               {totalCount.toLocaleString()} articles
             </span>
 
+            {/* Settings */}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="refresh-btn"
+              title="Settings"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+
             {/* Refresh */}
             <button
-              onClick={fetchNews}
+              onClick={refresh}
               className="refresh-btn"
               title="Refresh"
             >
@@ -299,21 +716,22 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading
             ? Array.from({ length: 9 }).map((_, i) => <ShimmerCard key={i} />)
-            : news.slice(0, visibleCount).map((item, i) => (
-              <NewsCard key={item.id} item={item} index={i} />
+            : news.map((item, i) => (
+              <NewsCard key={item.id} item={item} index={i} onSummarize={handleSummarize} />
             ))}
         </div>
 
         {/* Load More */}
-        {!loading && news.length > visibleCount && (
+        {!loading && news.length < categoryCount && (
           <div className="flex justify-center" style={{ marginTop: 40 }}>
             <button
-              onClick={() => setVisibleCount((prev) => prev + 18)}
+              onClick={loadMore}
               className="load-more-btn"
+              disabled={loadingMore}
             >
-              Load More
+              {loadingMore ? "Loading..." : "Load More"}
               <span style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 12 }}>
-                ({news.length - visibleCount} remaining)
+                ({categoryCount - news.length} remaining)
               </span>
             </button>
           </div>
@@ -347,9 +765,6 @@ export default function Home() {
         <div className="container-width flex flex-col items-center gap-2" style={{ padding: "16px 20px" }}>
           <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
             Browser News · Powered by Browser.cash
-          </span>
-          <span className="text-[11px]" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
-            auto-refresh 5m
           </span>
         </div>
       </footer>
