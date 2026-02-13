@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS fear_greed_index (
   btc_volume NUMERIC,
   headlines JSONB,
   factors JSONB,
+  token_scores JSONB,
+  token_prices JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

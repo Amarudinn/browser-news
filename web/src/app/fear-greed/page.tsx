@@ -467,21 +467,16 @@ export default function FearGreedPage() {
             setHistory(historyData);
         }
 
-        // Fetch token prices from CoinGecko
-        try {
-            const ids = TOKENS.map(t => t.id).join(",");
-            const res = await fetch(
-                `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
-            );
-            const priceData = await res.json();
+        // Read token prices from Supabase (cached from fear-greed.js)
+        if (latestData && latestData.length > 0) {
+            const entry = latestData[0];
+            const tp = entry.token_prices as Record<string, { currentPrice?: number; price?: number; change24h?: number }> | null;
             const prices: TokenPrice[] = TOKENS.map(token => ({
                 ...token,
-                price: priceData[token.id]?.usd || 0,
-                change24h: priceData[token.id]?.usd_24h_change || 0,
+                price: tp?.[token.symbol]?.currentPrice ?? tp?.[token.symbol]?.price ?? (token.symbol === "BTC" ? entry.btc_price ?? 0 : 0),
+                change24h: tp?.[token.symbol]?.change24h ?? (token.symbol === "BTC" ? entry.btc_24h_change ?? 0 : 0),
             }));
             setTokenPrices(prices);
-        } catch (e) {
-            console.error("Failed to fetch token prices", e);
         }
 
         setLoading(false);
@@ -1040,7 +1035,7 @@ export default function FearGreedPage() {
             >
                 <div className="container-width flex flex-col items-center gap-2" style={{ padding: "16px 20px" }}>
                     <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                        Browser News Â· Powered by Browser.cash
+                        Browser News · Powered by Browser.cash
                     </span>
                 </div>
             </footer>

@@ -25,5 +25,6 @@ export type FearGreedEntry = {
     headlines: { site: string; title: string; link: string }[];
     factors: { volatility: number | null; momentum: number | null; social: number | null; dominance: number | null; trends: number | null } | null;
     token_scores: { [key: string]: { score: number; label: string; summary: string } } | null;
+    token_prices: { [key: string]: { price: number; change24h: number; change7d?: number; volume24h?: number; marketCap?: number } } | null;
     created_at: string;
 };

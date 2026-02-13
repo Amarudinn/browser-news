@@ -23,6 +23,20 @@ const supabase = createClient(
 );
 
 // =====================
+// COINGECKO API HELPER
+// =====================
+const CG_API_KEY = process.env.COINGECKO_API_KEY;
+const CG_BASE = 'https://api.coingecko.com';
+
+async function cgFetch(path) {
+    const url = `${CG_BASE}${path}`;
+    const headers = CG_API_KEY ? { 'x-cg-demo-api-key': CG_API_KEY } : {};
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`CoinGecko ${res.status}: ${res.statusText}`);
+    return res.json();
+}
+
+// =====================
 // KONFIGURASI
 // =====================
 async function askConfig() {
@@ -77,7 +91,7 @@ async function askConfig() {
 let SESSION_CONFIG;
 
 // =====================
-// 5 SITUS CRYPTO (untuk news headlines)
+// 10 SITUS CRYPTO (pool untuk news headlines, target 5)
 // =====================
 const CRYPTO_SITES = [
     {
@@ -132,32 +146,185 @@ const CRYPTO_SITES = [
     },
     {
         name: 'BeInCrypto', category: 'crypto',
-        url: 'https://beincrypto.com/',
-        waitFor: 'a',
+        url: 'https://beincrypto.com/news/',
+        waitFor: 'article a, a[href*="/2"]',
         type: 'custom',
         scrape: function () {
             var results = [];
             var seen = {};
-            var links = document.querySelectorAll('a[href*="beincrypto.com/"]');
+            var links = document.querySelectorAll('a');
             for (var i = 0; i < links.length; i++) {
                 var a = links[i];
-                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
                 var href = a.getAttribute('href');
-                if (!href || !text) continue;
-                if (href.indexOf('/author/') !== -1 || href.indexOf('/tag/') !== -1 || href.indexOf('/category/') !== -1) continue;
-                if (text.length > 25 && text.length < 200 && !seen[href]) {
+                if (!href) continue;
+                // Skip non-article links
+                if (href.indexOf('/author/') !== -1 || href.indexOf('/tag/') !== -1 || href.indexOf('/category/') !== -1 || href.indexOf('/learn/') !== -1 || href.indexOf('/price/') !== -1 || href.indexOf('/exchanges/') !== -1) continue;
+                // Must look like an article slug (contains hyphens, not just a section page)
+                var parts = href.replace('https://beincrypto.com', '').split('/').filter(Boolean);
+                if (parts.length < 1 || parts[0].split('-').length < 3) continue;
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                if (!seen[href]) {
                     seen[href] = true;
                     var fullUrl = href.indexOf('http') === 0 ? href : 'https://beincrypto.com' + href;
-                    var parent = a.closest('article, li, div');
-                    var timeEl = parent ? parent.querySelector('time[datetime]') : null;
-                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
-                    results.push({ title: text, link: fullUrl, publishedAt: publishedAt });
+                    results.push({ title: text, link: fullUrl, publishedAt: null });
+                }
+            }
+            return results;
+        }
+    },
+    // === BACKUP SITES ===
+    {
+        name: 'CryptoSlate', category: 'crypto',
+        url: 'https://cryptoslate.com/top-news/',
+        waitFor: 'article a, .post-title a',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('article a, .post-title a, a.news-item, a[href*="cryptoslate.com/"]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var href = a.getAttribute('href');
+                if (!href) continue;
+                if (href.indexOf('/author/') !== -1 || href.indexOf('/tag/') !== -1 || href.indexOf('/category/') !== -1 || href.indexOf('/coins/') !== -1 || href.indexOf('/exchanges/') !== -1) continue;
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                var slug = href.replace('https://cryptoslate.com', '').replace(/^\//, '').replace(/\/$/, '');
+                if (slug.split('-').length < 3) continue;
+                if (!seen[href]) {
+                    seen[href] = true;
+                    var fullUrl = href.indexOf('http') === 0 ? href : 'https://cryptoslate.com/' + slug;
+                    results.push({ title: text, link: fullUrl, publishedAt: null });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'Bitcoin Magazine', category: 'crypto',
+        url: 'https://bitcoinmagazine.com/',
+        waitFor: 'a[href*="/news/"], a[href*="/markets/"]',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('a[href*="/news/"], a[href*="/markets/"], a[href*="/business/"], a[href*="/technical/"]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var href = a.getAttribute('href');
+                if (!href) continue;
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                // Must have a slug (at least the category + slug)
+                var parts = href.replace('https://bitcoinmagazine.com', '').split('/').filter(Boolean);
+                if (parts.length < 2) continue;
+                if (!seen[href]) {
+                    seen[href] = true;
+                    var fullUrl = href.indexOf('http') === 0 ? href : 'https://bitcoinmagazine.com' + href;
+                    results.push({ title: text, link: fullUrl, publishedAt: null });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'U.Today', category: 'crypto',
+        url: 'https://u.today/latest-cryptocurrency-news',
+        waitFor: 'a[href]',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('a[href]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var href = a.getAttribute('href');
+                if (!href) continue;
+                // u.today article URLs are like: u.today/article-slug-here (slug at root with many hyphens)
+                var clean = href.replace('https://u.today', '').replace('http://u.today', '');
+                if (clean.indexOf('/') !== 0) clean = '/' + clean;
+                // Skip tag/category pages
+                if (clean.indexOf('/latest-') === 0 || clean.indexOf('/bitcoin-') === 0 && clean.split('-').length < 4 || clean.indexOf('/ethereum-') === 0 && clean.split('-').length < 4 || clean === '/') continue;
+                var slug = clean.replace(/^\//, '').replace(/\/$/, '');
+                if (!slug || slug.indexOf('/') !== -1) continue; // no sub-paths
+                if (slug.split('-').length < 4) continue; // must be real article slug
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                if (!seen[slug]) {
+                    seen[slug] = true;
+                    var fullUrl = 'https://u.today/' + slug;
+                    results.push({ title: text, link: fullUrl, publishedAt: null });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'NewsBTC', category: 'crypto',
+        url: 'https://www.newsbtc.com/',
+        waitFor: 'a[href*="/bitcoin-news/"], a[href*="/altcoin/"]',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('a[href*="/bitcoin-news/"], a[href*="/altcoin/"], a[href*="/news/"], a[href*="/analysis/"]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var href = a.getAttribute('href');
+                if (!href) continue;
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                // Must have category + slug
+                var parts = href.replace('https://www.newsbtc.com', '').split('/').filter(Boolean);
+                if (parts.length < 2) continue;
+                if (!seen[href]) {
+                    seen[href] = true;
+                    results.push({ title: text, link: href, publishedAt: null });
+                }
+            }
+            return results;
+        }
+    },
+    {
+        name: 'CryptoPotato', category: 'crypto',
+        url: 'https://cryptopotato.com/crypto-news/',
+        waitFor: 'article a, a[href*="cryptopotato.com/"]',
+        type: 'custom',
+        scrape: function () {
+            var results = [];
+            var seen = {};
+            var links = document.querySelectorAll('article a, .entry-title a, a[href*="cryptopotato.com/"]');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                var href = a.getAttribute('href');
+                if (!href) continue;
+                if (href.indexOf('/author/') !== -1 || href.indexOf('/tag/') !== -1 || href.indexOf('/category/') !== -1) continue;
+                var text = a.innerText.trim().replace(/[\n\r\t]+/g, ' ').replace(/\s{2,}/g, ' ');
+                if (!text || text.length < 25 || text.length > 200) continue;
+                var slug = href.replace('https://cryptopotato.com', '').replace(/^\//, '').replace(/\/$/, '');
+                if (!slug || slug.split('-').length < 3) continue;
+                if (slug.indexOf('/') !== -1 && slug.indexOf('crypto-news') === -1) continue;
+                if (!seen[href]) {
+                    seen[href] = true;
+                    var fullUrl = href.indexOf('http') === 0 ? href : 'https://cryptopotato.com/' + slug;
+                    results.push({ title: text, link: fullUrl, publishedAt: null });
                 }
             }
             return results;
         }
     }
 ];
+
+// Shuffle array (Fisher-Yates)
+function shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
 // =====================
 // Generic Link Scraper
@@ -208,10 +375,7 @@ const genericLinkScraper = function (config) {
 async function getVolatilityData() {
     console.log('   [>] Fetching 30-day BTC price history...');
     try {
-        const res = await fetch(
-            'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily'
-        );
-        const data = await res.json();
+        const data = await cgFetch('/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily');
         const prices = data.prices.map(p => p[1]); // [timestamp, price] → price
 
         // Calculate volatility (standard deviation of daily returns)
@@ -258,10 +422,7 @@ async function getVolatilityData() {
 async function getMomentumData() {
     console.log('   [>] Fetching BTC market data...');
     try {
-        const res = await fetch(
-            'https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false'
-        );
-        const data = await res.json();
+        const data = await cgFetch('/api/v3/coins/bitcoin?localization=false&tickers=false&community_data=false&developer_data=false');
 
         const marketData = data.market_data;
         const result = {
@@ -344,8 +505,7 @@ async function getSocialData() {
 async function getBtcDominance() {
     console.log('   [>] Fetching BTC dominance...');
     try {
-        const res = await fetch('https://api.coingecko.com/api/v3/global');
-        const data = await res.json();
+        const data = await cgFetch('/api/v3/global');
 
         const dominance = parseFloat(data.data.market_cap_percentage.btc.toFixed(2));
         const totalMarketCap = data.data.total_market_cap.usd;
@@ -369,10 +529,11 @@ async function getBtcDominance() {
 // ===================================================================
 //  FACTOR 5: MARKET SENTIMENT REFERENCE (17.5%) — Alternative.me API
 // ===================================================================
-async function getAlternativeFnG() {
+async function getAlternativeFnG(client) {
     console.log('   [>] Fetching Alternative.me Fear & Greed Index...');
+
+    // === METHOD 1: API ===
     try {
-        // Get current + last 7 days for trend context
         const res = await fetch('https://api.alternative.me/fng/?limit=7');
         const data = await res.json();
 
@@ -387,7 +548,7 @@ async function getAlternativeFnG() {
             date: new Date(parseInt(d.timestamp) * 1000).toISOString().split('T')[0]
         }));
 
-        console.log(`   [v] Alternative.me: ${current.value} (${current.value_classification}) | 7-day history: ${history.map(h => h.score).join(', ')}`);
+        console.log(`   [v] Alternative.me (API): ${current.value} (${current.value_classification}) | 7-day history: ${history.map(h => h.score).join(', ')}`);
 
         return {
             currentScore: parseInt(current.value),
@@ -396,7 +557,55 @@ async function getAlternativeFnG() {
             available: true
         };
     } catch (e) {
-        console.error('   [!] Alternative.me Error:', e.message);
+        console.error('   [!] Alternative.me API Error:', e.message);
+        console.log('   [>] Trying scrape fallback...');
+    }
+
+    // === METHOD 2: SCRAPE ===
+    try {
+        const [width, height] = SESSION_CONFIG.windowSize.split('x').map(Number);
+        const session = await client.createSession({
+            type: SESSION_CONFIG.type,
+            options: {
+                country: SESSION_CONFIG.country,
+                node_id: SESSION_CONFIG.nodeId,
+                window: { width, height }
+            }
+        });
+        const browser = await chromium.connectOverCDP(session.cdpEndpoint);
+        const ctx = browser.contexts()[0] || await browser.newContext();
+        const page = ctx.pages()[0] || await ctx.newPage();
+
+        await page.goto('https://alternative.me/crypto/fear-and-greed-index/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForTimeout(3000);
+
+        const scoreText = await page.evaluate(() => {
+            // Try to find the score from the page
+            const el = document.querySelector('.fng-circle .fng-score, .fng-value, [class*="fear"] [class*="score"]');
+            if (el) return el.innerText.trim();
+            // Fallback: search for a large number that looks like a score
+            const allText = document.body.innerText;
+            const match = allText.match(/(?:Fear.*?Greed.*?)(\d{1,2})/i);
+            return match ? match[1] : null;
+        });
+
+        await browser.close();
+
+        if (scoreText && !isNaN(parseInt(scoreText))) {
+            const score = parseInt(scoreText);
+            const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear' : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
+            console.log(`   [v] Alternative.me (Scrape): ${score} (${label})`);
+            return {
+                currentScore: score,
+                currentLabel: label,
+                history: [{ score, label, date: new Date().toISOString().split('T')[0] }],
+                available: true
+            };
+        }
+        throw new Error('Could not extract score from page');
+    } catch (e2) {
+        console.error('   [!] Alternative.me Scrape Error:', e2.message);
+        console.log('   [~] Skipping Alternative.me (both API and scrape failed)');
         return null;
     }
 }
@@ -631,7 +840,8 @@ async function saveFearGreed(result, allFactors, headlines) {
             btc_volume: allFactors.momentum?.volume24h || null,
             headlines: headlines,
             factors: result.factors || null,
-            token_scores: result.token_scores || null
+            token_scores: result.token_scores || null,
+            token_prices: allFactors.multiToken || null
         });
 
     if (error) {
@@ -676,8 +886,7 @@ async function main() {
         const tokenIds = ['ethereum', 'solana', 'binancecoin'];
         const multiToken = {};
         for (const id of tokenIds) {
-            const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&community_data=false&developer_data=false`);
-            const data = await res.json();
+            const data = await cgFetch(`/api/v3/coins/${id}?localization=false&tickers=false&community_data=false&developer_data=false`);
             const md = data.market_data;
             const symbol = id === 'ethereum' ? 'ETH' : id === 'solana' ? 'SOL' : 'BNB';
             multiToken[symbol] = {
@@ -726,16 +935,38 @@ async function main() {
     console.log('STEP 4: Scraping crypto news headlines...');
     console.log('━'.repeat(50));
 
+    const TARGET_HEADLINES = 5;
+    const shuffled = shuffleArray(CRYPTO_SITES);
+    const primarySites = shuffled.slice(0, TARGET_HEADLINES);
+    const backupSites = shuffled.slice(TARGET_HEADLINES);
+
+    console.log(`   [i] Primary: ${primarySites.map(s => s.name).join(', ')}`);
+    console.log(`   [i] Backup:  ${backupSites.map(s => s.name).join(', ')}`);
+
     const headlines = [];
-    const total = CRYPTO_SITES.length;
-    for (let i = 0; i < total; i++) {
-        const result = await scrapeSite(client, CRYPTO_SITES[i], i, total);
+    let siteIdx = 0;
+
+    // Scrape primary sites
+    for (let i = 0; i < primarySites.length; i++) {
+        siteIdx++;
+        const result = await scrapeSite(client, primarySites[i], siteIdx - 1, TARGET_HEADLINES);
         if (result) headlines.push(result);
-        if (i < total - 1) await new Promise(r => setTimeout(r, 3000));
+        if (i < primarySites.length - 1) await new Promise(r => setTimeout(r, 3000));
+    }
+
+    // If not enough, rotate to backup sites
+    if (headlines.length < TARGET_HEADLINES && backupSites.length > 0) {
+        console.log(`\n   [!] Only ${headlines.length}/${TARGET_HEADLINES} headlines, rotating to backup sites...`);
+        for (let i = 0; i < backupSites.length && headlines.length < TARGET_HEADLINES; i++) {
+            siteIdx++;
+            await new Promise(r => setTimeout(r, 3000));
+            const result = await scrapeSite(client, backupSites[i], siteIdx - 1, CRYPTO_SITES.length);
+            if (result) headlines.push(result);
+        }
     }
 
     allFactors.headlines = headlines;
-    console.log(`\n   >> Headlines collected: ${headlines.length}/${total}`);
+    console.log(`\n   >> Headlines collected: ${headlines.length}/${TARGET_HEADLINES}`);
 
     // ── STEP 5: Gemini AI Analysis ──
     console.log('\n' + '━'.repeat(50));
