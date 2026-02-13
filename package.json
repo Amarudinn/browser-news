@@ -4,6 +4,7 @@
     "description": "Browser automation scripts",
     "type": "module",
     "dependencies": {
+        "@bandprotocol/membit": "^0.0.1",
         "@browsercash/sdk": "^0.10.0",
         "@supabase/supabase-js": "^2.95.3",
         "dotenv": "^17.2.4",

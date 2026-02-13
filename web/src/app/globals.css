@@ -15,8 +15,8 @@
   --border-hover: rgba(255, 255, 255, 0.14);
 
   --text-primary: #ececef;
-  --text-secondary: #8b8b96;
-  --text-tertiary: #55555e;
+  --text-secondary: #9a9aa3;
+  --text-tertiary: #66666d;
 
   --accent: #6366f1;
   --accent-soft: rgba(99, 102, 241, 0.12);
@@ -95,6 +95,23 @@ body {
 
 .news-card:hover::before {
   background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+}
+
+.news-card.news-card-static:hover {
+  transform: none;
+  border-color: var(--border-subtle);
+  box-shadow: none;
+  background: var(--bg-surface);
+}
+
+.news-card.news-card-static:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0), transparent);
+}
+
+.btn-summary:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: var(--border-hover) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Category Badge */

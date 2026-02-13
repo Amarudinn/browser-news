@@ -146,7 +146,9 @@ const NEWS_SITES = [
                 if (t && a && t.innerText.trim().length > 10) {
                     var link = a.getAttribute('href');
                     if (link && !link.startsWith('http')) link = window.location.origin + link;
-                    results.push({ title: t.innerText.trim(), link: link });
+                    var timeEl = el.querySelector('time[datetime]');
+                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
+                    results.push({ title: t.innerText.trim(), link: link, publishedAt: publishedAt });
                 }
             }
             return results;
@@ -167,7 +169,9 @@ const NEWS_SITES = [
                 if (t && a && t.innerText.trim().length > 10) {
                     var link = a.getAttribute('href');
                     if (link && !link.startsWith('http')) link = window.location.origin + link;
-                    results.push({ title: t.innerText.trim(), link: link });
+                    var timeEl = el.querySelector('time[datetime]');
+                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
+                    results.push({ title: t.innerText.trim(), link: link, publishedAt: publishedAt });
                 }
             }
             return results;
@@ -230,7 +234,10 @@ const NEWS_SITES = [
                 var href = a.getAttribute('href');
                 if (text.length > 20 && text.length < 200 && href.indexOf('/price/') === -1 && !seen[href]) {
                     seen[href] = true;
-                    results.push({ title: text, link: 'https://decrypt.co' + href });
+                    var parent = a.closest('article, li, div');
+                    var timeEl = parent ? parent.querySelector('time[datetime]') : null;
+                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
+                    results.push({ title: text, link: 'https://decrypt.co' + href, publishedAt: publishedAt });
                 }
             }
             return results;
@@ -413,7 +420,10 @@ const NEWS_SITES = [
                 if (text.length > 25 && text.length < 200 && !seen[href]) {
                     seen[href] = true;
                     var fullUrl = href.indexOf('http') === 0 ? href : 'https://beincrypto.com' + href;
-                    results.push({ title: text, link: fullUrl });
+                    var parent = a.closest('article, li, div');
+                    var timeEl = parent ? parent.querySelector('time[datetime]') : null;
+                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
+                    results.push({ title: text, link: fullUrl, publishedAt: publishedAt });
                 }
             }
             return results;
@@ -438,7 +448,10 @@ const NEWS_SITES = [
                 if (href.indexOf('coingecko.com') !== -1) continue;
                 if (text.length > 25 && text.length < 200 && href.indexOf('http') === 0 && !seen[href]) {
                     seen[href] = true;
-                    results.push({ title: text, link: href });
+                    var parent = a.closest('article, li, div');
+                    var timeEl = parent ? parent.querySelector('time[datetime]') : null;
+                    var publishedAt = timeEl ? timeEl.getAttribute('datetime') : null;
+                    results.push({ title: text, link: href, publishedAt: publishedAt });
                 }
             }
             return results;
@@ -487,7 +500,15 @@ const genericLinkScraper = function (config) {
         var fullUrl = href.indexOf('http') === 0 ? href : config.baseUrl + (href.charAt(0) === '/' ? '' : '/') + href;
         if (!seen[fullUrl]) {
             seen[fullUrl] = true;
-            results.push({ title: text, link: fullUrl });
+            // Try to find timestamp near the link
+            var parent = a.closest('article, li, div, section');
+            var timeEl = parent ? parent.querySelector('time[datetime]') : null;
+            if (!timeEl) {
+                // Fallback: check for elements with data-date or data-timestamp attributes
+                timeEl = parent ? parent.querySelector('[datetime], [data-date], [data-timestamp]') : null;
+            }
+            var publishedAt = timeEl ? (timeEl.getAttribute('datetime') || timeEl.getAttribute('data-date') || timeEl.getAttribute('data-timestamp')) : null;
+            results.push({ title: text, link: fullUrl, publishedAt: publishedAt });
         }
     }
     return results;
@@ -558,7 +579,19 @@ async function processSite(client, site, index, total) {
             });
         }
 
-        console.log(`   [i] Ditemukan ${allNews.length} berita di halaman`);
+        // Count how many have timestamps
+        const withTimestamp = allNews.filter(n => n.publishedAt).length;
+        console.log(`   [i] Ditemukan ${allNews.length} berita di halaman (${withTimestamp} with timestamps)`);
+
+        // Sort by timestamp: newest first, articles without timestamps go to end
+        allNews.sort((a, b) => {
+            if (a.publishedAt && b.publishedAt) {
+                return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+            }
+            if (a.publishedAt) return -1;
+            if (b.publishedAt) return 1;
+            return 0;
+        });
 
         // Cari berita yang BELUM pernah dikirim (cek via Supabase)
         let selectedNews = null;

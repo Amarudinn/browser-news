@@ -13,3 +13,17 @@ export type NewsItem = {
     link: string;
     created_at: string;
 };
+
+export type FearGreedEntry = {
+    id: number;
+    score: number;
+    label: string;
+    reason: string;
+    btc_price: number | null;
+    btc_24h_change: number | null;
+    btc_volume: number | null;
+    headlines: { site: string; title: string; link: string }[];
+    factors: { volatility: number | null; momentum: number | null; social: number | null; dominance: number | null; trends: number | null } | null;
+    token_scores: { [key: string]: { score: number; label: string; summary: string } } | null;
+    created_at: string;
+};
