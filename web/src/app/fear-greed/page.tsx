@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase, type FearGreedEntry } from "@/lib/supabase";
 import Link from "next/link";
+import TabNavigation from "@/app/components/TabNavigation";
 
 // Token config
 const TOKENS = [
@@ -487,46 +488,8 @@ export default function FearGreedPage() {
     }, [fetchData]);
 
     return (
-        <div className="min-h-screen">
-            {/* â”€â”€â”€ Header â”€â”€â”€ */}
-            <header
-                className="sticky top-0 z-50 backdrop-blur-xl"
-                style={{
-                    background: "rgba(10, 10, 11, 0.8)",
-                    borderBottom: "1px solid var(--border-subtle)",
-                }}
-            >
-                <div className="container-width h-14 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-3" style={{ textDecoration: "none" }}>
-                        <img
-                            src="/browser-news.png"
-                            alt="Browser News"
-                            className="w-7 h-7 rounded-lg"
-                            style={{ objectFit: "contain" }}
-                        />
-                        <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                            Browser News
-                        </span>
-                    </Link>
-
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="refresh-btn" title="Back to News">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M19 12H5" />
-                                <path d="M12 19l-7-7 7-7" />
-                            </svg>
-                        </Link>
-                        <button onClick={fetchData} className="refresh-btn" title="Refresh">
-                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            {/* â”€â”€â”€ Main Content â”€â”€â”€ */}
-            <main className="container-width" style={{ paddingTop: 32, paddingBottom: 40 }}>
+        <TabNavigation onRefresh={fetchData}>
+            <>
                 {/* Title */}
                 <div style={{ marginBottom: 32 }}>
                     <h2 className="text-xl font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
@@ -566,7 +529,6 @@ export default function FearGreedPage() {
                     </div>
                 ) : (
                     <>
-                        {/* â”€â”€â”€ Score + BTC Info â”€â”€â”€ */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: 24 }}>
                             {/* Gauge Card */}
                             <div className="news-card news-card-static" style={{ padding: "16px 16px 16px" }}>
@@ -828,7 +790,6 @@ export default function FearGreedPage() {
                             </div>
                         )}
 
-                        {/* â”€â”€â”€ Headlines Used â”€â”€â”€ */}
                         {latest.headlines && latest.headlines.length > 0 && (
                             <div className="news-card news-card-static" style={{ padding: "16px 12px", marginBottom: 24 }}>
                                 <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
@@ -1026,19 +987,7 @@ export default function FearGreedPage() {
                         })()}
                     </>
                 )}
-            </main>
-
-            {/* ——— Footer ——— */}
-            <footer
-                className="py-6 mt-16"
-                style={{ borderTop: "1px solid var(--border-subtle)" }}
-            >
-                <div className="container-width flex flex-col items-center gap-2" style={{ padding: "16px 20px" }}>
-                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                        Browser News · Powered by Browser.cash
-                    </span>
-                </div>
-            </footer>
-        </div>
+            </>
+        </TabNavigation>
     );
 }

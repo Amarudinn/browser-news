@@ -1,0 +1,610 @@
+{
+  "scrapedAt": "2026-02-13T18:09:28.347Z",
+  "indexScore": "31",
+  "indexLabel": "Altcoin Season",
+  "totalCoins": 100,
+  "outperforming": 15,
+  "underperforming": 85,
+  "coins": [
+    {
+      "ticker": "PIPPIN",
+      "performance": "1821.18%",
+      "direction": "outperform",
+      "pctSigned": "+1821.18%"
+    },
+    {
+      "ticker": "RIVER",
+      "performance": "298.53%",
+      "direction": "outperform",
+      "pctSigned": "+298.53%"
+    },
+    {
+      "ticker": "KITE",
+      "performance": "172.09%",
+      "direction": "outperform",
+      "pctSigned": "+172.09%"
+    },
+    {
+      "ticker": "CC",
+      "performance": "43.11%",
+      "direction": "outperform",
+      "pctSigned": "+43.11%"
+    },
+    {
+      "ticker": "SKY",
+      "performance": "34.10%",
+      "direction": "outperform",
+      "pctSigned": "+34.10%"
+    },
+    {
+      "ticker": "ZRO",
+      "performance": "31.90%",
+      "direction": "outperform",
+      "pctSigned": "+31.90%"
+    },
+    {
+      "ticker": "CHZ",
+      "performance": "28.27%",
+      "direction": "outperform",
+      "pctSigned": "+28.27%"
+    },
+    {
+      "ticker": "H",
+      "performance": "28.11%",
+      "direction": "outperform",
+      "pctSigned": "+28.11%"
+    },
+    {
+      "ticker": "PAXG",
+      "performance": "22.73%",
+      "direction": "outperform",
+      "pctSigned": "+22.73%"
+    },
+    {
+      "ticker": "XAUT",
+      "performance": "22.59%",
+      "direction": "outperform",
+      "pctSigned": "+22.59%"
+    },
+    {
+      "ticker": "MYX",
+      "performance": "14.36%",
+      "direction": "outperform",
+      "pctSigned": "+14.36%"
+    },
+    {
+      "ticker": "JST",
+      "performance": "11.99%",
+      "direction": "outperform",
+      "pctSigned": "+11.99%"
+    },
+    {
+      "ticker": "BCH",
+      "performance": "8.22%",
+      "direction": "outperform",
+      "pctSigned": "+8.22%"
+    },
+    {
+      "ticker": "GNO",
+      "performance": "5.69%",
+      "direction": "outperform",
+      "pctSigned": "+5.69%"
+    },
+    {
+      "ticker": "TRX",
+      "performance": "4.55%",
+      "direction": "outperform",
+      "pctSigned": "+4.55%"
+    },
+    {
+      "ticker": "LEO",
+      "performance": "6.34%",
+      "direction": "underperform",
+      "pctSigned": "-6.34%"
+    },
+    {
+      "ticker": "NFT",
+      "performance": "15.54%",
+      "direction": "underperform",
+      "pctSigned": "-15.54%"
+    },
+    {
+      "ticker": "QNT",
+      "performance": "16.04%",
+      "direction": "underperform",
+      "pctSigned": "-16.04%"
+    },
+    {
+      "ticker": "NEXO",
+      "performance": "16.78%",
+      "direction": "underperform",
+      "pctSigned": "-16.78%"
+    },
+    {
+      "ticker": "HYPE",
+      "performance": "17.69%",
+      "direction": "underperform",
+      "pctSigned": "-17.69%"
+    },
+    {
+      "ticker": "XMR",
+      "performance": "17.81%",
+      "direction": "underperform",
+      "pctSigned": "-17.81%"
+    },
+    {
+      "ticker": "STABLE",
+      "performance": "18.56%",
+      "direction": "underperform",
+      "pctSigned": "-18.56%"
+    },
+    {
+      "ticker": "TON",
+      "performance": "21.36%",
+      "direction": "underperform",
+      "pctSigned": "-21.36%"
+    },
+    {
+      "ticker": "BTT",
+      "performance": "22.13%",
+      "direction": "underperform",
+      "pctSigned": "-22.13%"
+    },
+    {
+      "ticker": "SUN",
+      "performance": "22.35%",
+      "direction": "underperform",
+      "pctSigned": "-22.35%"
+    },
+    {
+      "ticker": "STX",
+      "performance": "23.93%",
+      "direction": "underperform",
+      "pctSigned": "-23.93%"
+    },
+    {
+      "ticker": "PEPE",
+      "performance": "25.67%",
+      "direction": "underperform",
+      "pctSigned": "-25.67%"
+    },
+    {
+      "ticker": "BSV",
+      "performance": "25.87%",
+      "direction": "underperform",
+      "pctSigned": "-25.87%"
+    },
+    {
+      "ticker": "DCR",
+      "performance": "27.34%",
+      "direction": "underperform",
+      "pctSigned": "-27.34%"
+    },
+    {
+      "ticker": "WLFI",
+      "performance": "27.84%",
+      "direction": "underperform",
+      "pctSigned": "-27.84%"
+    },
+    {
+      "ticker": "ATOM",
+      "performance": "27.96%",
+      "direction": "underperform",
+      "pctSigned": "-27.96%"
+    },
+    {
+      "ticker": "BTC",
+      "performance": "28.17%",
+      "direction": "underperform",
+      "pctSigned": "-28.17%"
+    },
+    {
+      "ticker": "PI",
+      "performance": "28.67%",
+      "direction": "underperform",
+      "pctSigned": "-28.67%"
+    },
+    {
+      "ticker": "KAS",
+      "performance": "29.52%",
+      "direction": "underperform",
+      "pctSigned": "-29.52%"
+    },
+    {
+      "ticker": "XTZ",
+      "performance": "29.87%",
+      "direction": "underperform",
+      "pctSigned": "-29.87%"
+    },
+    {
+      "ticker": "SHIB",
+      "performance": "30.71%",
+      "direction": "underperform",
+      "pctSigned": "-30.71%"
+    },
+    {
+      "ticker": "JASMY",
+      "performance": "31.52%",
+      "direction": "underperform",
+      "pctSigned": "-31.52%"
+    },
+    {
+      "ticker": "OKB",
+      "performance": "31.92%",
+      "direction": "underperform",
+      "pctSigned": "-31.92%"
+    },
+    {
+      "ticker": "FLR",
+      "performance": "32.16%",
+      "direction": "underperform",
+      "pctSigned": "-32.16%"
+    },
+    {
+      "ticker": "KCS",
+      "performance": "32.30%",
+      "direction": "underperform",
+      "pctSigned": "-32.30%"
+    },
+    {
+      "ticker": "CRO",
+      "performance": "32.46%",
+      "direction": "underperform",
+      "pctSigned": "-32.46%"
+    },
+    {
+      "ticker": "XDC",
+      "performance": "32.76%",
+      "direction": "underperform",
+      "pctSigned": "-32.76%"
+    },
+    {
+      "ticker": "KAIA",
+      "performance": "33.81%",
+      "direction": "underperform",
+      "pctSigned": "-33.81%"
+    },
+    {
+      "ticker": "BNB",
+      "performance": "34.42%",
+      "direction": "underperform",
+      "pctSigned": "-34.42%"
+    },
+    {
+      "ticker": "AAVE",
+      "performance": "34.85%",
+      "direction": "underperform",
+      "pctSigned": "-34.85%"
+    },
+    {
+      "ticker": "ASTER",
+      "performance": "35.04%",
+      "direction": "underperform",
+      "pctSigned": "-35.04%"
+    },
+    {
+      "ticker": "GT",
+      "performance": "35.40%",
+      "direction": "underperform",
+      "pctSigned": "-35.40%"
+    },
+    {
+      "ticker": "ETH",
+      "performance": "35.86%",
+      "direction": "underperform",
+      "pctSigned": "-35.86%"
+    },
+    {
+      "ticker": "XLM",
+      "performance": "36.75%",
+      "direction": "underperform",
+      "pctSigned": "-36.75%"
+    },
+    {
+      "ticker": "RENDER",
+      "performance": "37.20%",
+      "direction": "underperform",
+      "pctSigned": "-37.20%"
+    },
+    {
+      "ticker": "XRP",
+      "performance": "37.42%",
+      "direction": "underperform",
+      "pctSigned": "-37.42%"
+    },
+    {
+      "ticker": "POL",
+      "performance": "37.49%",
+      "direction": "underperform",
+      "pctSigned": "-37.49%"
+    },
+    {
+      "ticker": "LINK",
+      "performance": "38.13%",
+      "direction": "underperform",
+      "pctSigned": "-38.13%"
+    },
+    {
+      "ticker": "BGB",
+      "performance": "38.25%",
+      "direction": "underperform",
+      "pctSigned": "-38.25%"
+    },
+    {
+      "ticker": "SYRUP",
+      "performance": "38.31%",
+      "direction": "underperform",
+      "pctSigned": "-38.31%"
+    },
+    {
+      "ticker": "HBAR",
+      "performance": "38.44%",
+      "direction": "underperform",
+      "pctSigned": "-38.44%"
+    },
+    {
+      "ticker": "M",
+      "performance": "39.65%",
+      "direction": "underperform",
+      "pctSigned": "-39.65%"
+    },
+    {
+      "ticker": "MORPHO",
+      "performance": "39.82%",
+      "direction": "underperform",
+      "pctSigned": "-39.82%"
+    },
+    {
+      "ticker": "SOL",
+      "performance": "41.10%",
+      "direction": "underperform",
+      "pctSigned": "-41.10%"
+    },
+    {
+      "ticker": "DOGE",
+      "performance": "41.33%",
+      "direction": "underperform",
+      "pctSigned": "-41.33%"
+    },
+    {
+      "ticker": "LIT",
+      "performance": "41.38%",
+      "direction": "underperform",
+      "pctSigned": "-41.38%"
+    },
+    {
+      "ticker": "AVAX",
+      "performance": "41.67%",
+      "direction": "underperform",
+      "pctSigned": "-41.67%"
+    },
+    {
+      "ticker": "PUMP",
+      "performance": "41.79%",
+      "direction": "underperform",
+      "pctSigned": "-41.79%"
+    },
+    {
+      "ticker": "FET",
+      "performance": "42.85%",
+      "direction": "underperform",
+      "pctSigned": "-42.85%"
+    },
+    {
+      "ticker": "ALGO",
+      "performance": "43.10%",
+      "direction": "underperform",
+      "pctSigned": "-43.10%"
+    },
+    {
+      "ticker": "CRV",
+      "performance": "43.27%",
+      "direction": "underperform",
+      "pctSigned": "-43.27%"
+    },
+    {
+      "ticker": "BONK",
+      "performance": "43.66%",
+      "direction": "underperform",
+      "pctSigned": "-43.66%"
+    },
+    {
+      "ticker": "WLD",
+      "performance": "43.82%",
+      "direction": "underperform",
+      "pctSigned": "-43.82%"
+    },
+    {
+      "ticker": "FLOKI",
+      "performance": "44.71%",
+      "direction": "underperform",
+      "pctSigned": "-44.71%"
+    },
+    {
+      "ticker": "ETC",
+      "performance": "44.86%",
+      "direction": "underperform",
+      "pctSigned": "-44.86%"
+    },
+    {
+      "ticker": "SUI",
+      "performance": "45.29%",
+      "direction": "underperform",
+      "pctSigned": "-45.29%"
+    },
+    {
+      "ticker": "CAKE",
+      "performance": "46.45%",
+      "direction": "underperform",
+      "pctSigned": "-46.45%"
+    },
+    {
+      "ticker": "ADA",
+      "performance": "46.61%",
+      "direction": "underperform",
+      "pctSigned": "-46.61%"
+    },
+    {
+      "ticker": "LTC",
+      "performance": "46.80%",
+      "direction": "underperform",
+      "pctSigned": "-46.80%"
+    },
+    {
+      "ticker": "MNT",
+      "performance": "47.34%",
+      "direction": "underperform",
+      "pctSigned": "-47.34%"
+    },
+    {
+      "ticker": "JUP",
+      "performance": "47.57%",
+      "direction": "underperform",
+      "pctSigned": "-47.57%"
+    },
+    {
+      "ticker": "VET",
+      "performance": "48.36%",
+      "direction": "underperform",
+      "pctSigned": "-48.36%"
+    },
+    {
+      "ticker": "VIRTUAL",
+      "performance": "48.73%",
+      "direction": "underperform",
+      "pctSigned": "-48.73%"
+    },
+    {
+      "ticker": "ETHFI",
+      "performance": "48.94%",
+      "direction": "underperform",
+      "pctSigned": "-48.94%"
+    },
+    {
+      "ticker": "PENGU",
+      "performance": "49.97%",
+      "direction": "underperform",
+      "pctSigned": "-49.97%"
+    },
+    {
+      "ticker": "TAO",
+      "performance": "51.43%",
+      "direction": "underperform",
+      "pctSigned": "-51.43%"
+    },
+    {
+      "ticker": "OP",
+      "performance": "52.07%",
+      "direction": "underperform",
+      "pctSigned": "-52.07%"
+    },
+    {
+      "ticker": "ARB",
+      "performance": "52.78%",
+      "direction": "underperform",
+      "pctSigned": "-52.78%"
+    },
+    {
+      "ticker": "TRUMP",
+      "performance": "53.05%",
+      "direction": "underperform",
+      "pctSigned": "-53.05%"
+    },
+    {
+      "ticker": "DASH",
+      "performance": "53.30%",
+      "direction": "underperform",
+      "pctSigned": "-53.30%"
+    },
+    {
+      "ticker": "DOT",
+      "performance": "54.09%",
+      "direction": "underperform",
+      "pctSigned": "-54.09%"
+    },
+    {
+      "ticker": "UNI",
+      "performance": "54.18%",
+      "direction": "underperform",
+      "pctSigned": "-54.18%"
+    },
+    {
+      "ticker": "LDO",
+      "performance": "54.26%",
+      "direction": "underperform",
+      "pctSigned": "-54.26%"
+    },
+    {
+      "ticker": "SEI",
+      "performance": "54.32%",
+      "direction": "underperform",
+      "pctSigned": "-54.32%"
+    },
+    {
+      "ticker": "INJ",
+      "performance": "54.97%",
+      "direction": "underperform",
+      "pctSigned": "-54.97%"
+    },
+    {
+      "ticker": "ICP",
+      "performance": "55.07%",
+      "direction": "underperform",
+      "pctSigned": "-55.07%"
+    },
+    {
+      "ticker": "FIL",
+      "performance": "55.18%",
+      "direction": "underperform",
+      "pctSigned": "-55.18%"
+    },
+    {
+      "ticker": "ONDO",
+      "performance": "55.21%",
+      "direction": "underperform",
+      "pctSigned": "-55.21%"
+    },
+    {
+      "ticker": "IMX",
+      "performance": "56.68%",
+      "direction": "underperform",
+      "pctSigned": "-56.68%"
+    },
+    {
+      "ticker": "ENA",
+      "performance": "57.19%",
+      "direction": "underperform",
+      "pctSigned": "-57.19%"
+    },
+    {
+      "ticker": "NEAR",
+      "performance": "58.75%",
+      "direction": "underperform",
+      "pctSigned": "-58.75%"
+    },
+    {
+      "ticker": "ZEC",
+      "performance": "60.94%",
+      "direction": "underperform",
+      "pctSigned": "-60.94%"
+    },
+    {
+      "ticker": "IP",
+      "performance": "64.20%",
+      "direction": "underperform",
+      "pctSigned": "-64.20%"
+    },
+    {
+      "ticker": "APT",
+      "performance": "67.86%",
+      "direction": "underperform",
+      "pctSigned": "-67.86%"
+    },
+    {
+      "ticker": "NIGHT",
+      "performance": "87.36%",
+      "direction": "underperform",
+      "pctSigned": "-87.36%"
+    }
+  ]
+}

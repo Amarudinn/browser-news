@@ -3,6 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase, type NewsItem } from "@/lib/supabase";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const NAV_LINKS = [
+  { label: "Analytics", href: "/fear-greed", matchPaths: ["/fear-greed", "/altcoin-season", "/crypto-gems"] },
+  { label: "Docs", href: "/docs", matchPaths: ["/docs"] },
+];
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -498,6 +504,7 @@ function CategoryDropdown({ category, setCategory }: { category: string; setCate
 const PAGE_SIZE = 18;
 
 export default function Home() {
+  const pathname = usePathname();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -510,6 +517,11 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [summaryItem, setSummaryItem] = useState<NewsItem | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isNavActive = useCallback((link: typeof NAV_LINKS[0]) => {
+    return link.matchPaths.some(p => pathname.startsWith(p));
+  }, [pathname]);
 
   const newsRef = useRef<NewsItem[]>([]);
 
@@ -622,73 +634,167 @@ export default function Home() {
         style={{
           background: "rgba(10, 10, 11, 0.8)",
           borderBottom: "1px solid var(--border-subtle)",
+          position: "relative",
         }}
       >
         <div className="container-width h-14 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <img
-              src="/browser-news.png"
-              alt="Browser News"
-              className="w-7 h-7 rounded-lg"
-              style={{ objectFit: "contain" }}
-            />
-            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Browser News
-            </span>
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center gap-3">
-            <span
-              className="hidden sm:inline text-[12px] font-medium"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {totalCount.toLocaleString()} articles
-            </span>
-
-            {/* Fear & Greed Index */}
-            <Link
-              href="/fear-greed"
-              className="refresh-btn"
-              title="Fear & Greed Index"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 3v18h18" />
-                <path d="M18 17V9" />
-                <path d="M13 17V5" />
-                <path d="M8 17v-3" />
-              </svg>
+          {/* Left: Logo + Desktop Nav */}
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-3" style={{ textDecoration: "none" }}>
+              <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
             </Link>
 
-            {/* Settings */}
+            {/* Desktop Nav Links */}
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV_LINKS.map(link => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="desktop-nav-link"
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: isNavActive(link) ? 600 : 500,
+                    color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
+                    background: isNavActive(link) ? "rgba(255,255,255,0.06)" : "transparent",
+                    textDecoration: "none",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          {/* Right: Login + Gear + Hamburger */}
+          <div className="flex items-center gap-2">
+            {/* Login Button */}
+            <button
+              style={{
+                padding: "6px 16px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                border: "1px solid var(--border-subtle)",
+                background: "transparent",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              Login
+            </button>
+
+            {/* Gear Icon */}
             <button
               onClick={() => setSettingsOpen(true)}
-              className="refresh-btn"
               title="Settings"
+              style={{
+                width: 34, height: 34,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 8, border: "none",
+                background: "transparent",
+                color: "var(--text-tertiary)",
+                cursor: "pointer",
+                transition: "color 0.2s",
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
 
-            {/* Refresh */}
+            {/* Hamburger (mobile only) */}
             <button
-              onClick={refresh}
-              className="refresh-btn"
-              title="Refresh"
+              className="md:hidden flex items-center justify-center"
+              onClick={() => setMenuOpen(!menuOpen)}
+              style={{
+                width: 34, height: 34,
+                borderRadius: 8, border: "none",
+                background: "transparent",
+                color: "var(--text-tertiary)",
+                cursor: "pointer",
+              }}
             >
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                />
-              </svg>
+              {menuOpen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
+
+        {/* Full-screen Mobile Menu */}
+        {menuOpen && (
+          <div className="md:hidden" style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50,
+            background: "#0a0a0b",
+            display: "flex", flexDirection: "column",
+          }}>
+            {/* Top bar with close button */}
+            <div style={{
+              height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "0 20px", borderBottom: "1px solid var(--border-subtle)",
+            }}>
+              <div className="flex items-center gap-3">
+                <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
+                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
+              </div>
+              <button
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  width: 34, height: 34,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 8, border: "none",
+                  background: "transparent",
+                  color: "var(--text-tertiary)",
+                  cursor: "pointer",
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Centered menu items */}
+            <div style={{
+              flex: 1, display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 12,
+            }}>
+              {NAV_LINKS.map(link => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    padding: "14px 40px",
+                    borderRadius: 12,
+                    fontSize: 20,
+                    fontWeight: isNavActive(link) ? 700 : 500,
+                    color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
+                    background: isNavActive(link) ? "rgba(255,255,255,0.06)" : "transparent",
+                    border: isNavActive(link) ? "1px solid var(--border-subtle)" : "1px solid transparent",
+                    textDecoration: "none",
+                    transition: "all 0.2s",
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ─── Main Content ─── */}

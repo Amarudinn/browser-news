@@ -350,6 +350,18 @@ body {
   transform: scale(0.95);
 }
 
+/* Desktop nav links */
+.desktop-nav-link {
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.desktop-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: var(--border-subtle);
+  color: var(--text-primary) !important;
+}
+
 /* Fade in animation */
 @keyframes fadeInUp {
   from {

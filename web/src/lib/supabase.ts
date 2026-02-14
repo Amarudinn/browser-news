@@ -28,3 +28,19 @@ export type FearGreedEntry = {
     token_prices: { [key: string]: { price: number; change24h: number; change7d?: number; volume24h?: number; marketCap?: number } } | null;
     created_at: string;
 };
+
+export type AltcoinSeasonEntry = {
+    id: number;
+    ticker: string;
+    name: string | null;
+    logo_url: string | null;
+    coingecko_id: string | null;
+    performance: number;
+    direction: string;
+    rank: number;
+    price: number | null;
+    price_change_24h: number | null;
+    index_score: number | null;
+    index_label: string | null;
+    scraped_at: string;
+};
