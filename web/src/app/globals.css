@@ -204,11 +204,11 @@ body {
   width: 100%;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   font-family: var(--font-sans);
   cursor: pointer;
   transition: border-color 0.2s ease;
@@ -223,12 +223,11 @@ body {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
+  background: #0a0a0b;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
   padding: 4px;
   z-index: 100;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   animation: dropdownIn 0.15s ease-out;
 }
 
@@ -263,12 +262,13 @@ body {
 }
 
 .custom-dropdown-item:hover {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
 }
 
 .custom-dropdown-item.active {
-  color: var(--accent-hover);
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.08);
 }
 
 /* Shimmer */

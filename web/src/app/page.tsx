@@ -465,33 +465,65 @@ function CategoryDropdown({ category, setCategory }: { category: string; setCate
     <div className="mobile-only" style={{ position: "relative" }} ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="custom-dropdown-trigger"
+        style={{
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid var(--border-subtle)",
+          background: "rgba(255,255,255,0.03)",
+          color: "var(--text-primary)",
+          fontSize: 14,
+          fontWeight: 600,
+          fontFamily: "var(--font-sans)",
+          cursor: "pointer",
+          transition: "border-color 0.2s ease",
+        }}
       >
         <span>{currentLabel}</span>
         <svg
           width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0)" }}
         >
-          <path d="M6 9l6 6 6-6" />
+          <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
       {open && (
-        <div className="custom-dropdown-menu">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => { setCategory(cat.key); setOpen(false); }}
-              className={`custom-dropdown-item ${category === cat.key ? "active" : ""}`}
-            >
-              {cat.label}
-              {category === cat.key && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              )}
-            </button>
-          ))}
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 100,
+          background: "#0a0a0b",
+          border: "1px solid var(--border-subtle)",
+          borderRadius: 10,
+          padding: 4,
+          display: "flex", flexDirection: "column" as const, gap: 2,
+        }}>
+          {CATEGORIES.map((cat) => {
+            const isActive = category === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => { setCategory(cat.key); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center",
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: isActive ? "rgba(167,139,250,0.08)" : "transparent",
+                  color: isActive ? "#a78bfa" : "var(--text-tertiary)",
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  fontFamily: "var(--font-sans)",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  textAlign: "left" as const,
+                }}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -733,74 +765,79 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Full-screen Mobile Menu */}
-        {menuOpen && (
-          <div className="md:hidden" style={{
-            position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50,
-            background: "#0a0a0b",
-            display: "flex", flexDirection: "column",
+      </header>
+
+      {/* Full-screen Mobile Menu (outside header so position:fixed works) */}
+      {menuOpen && (
+        <div className="md:hidden" style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+          background: "#0a0a0b",
+          display: "flex", flexDirection: "column",
+        }}>
+          {/* Top bar with close button */}
+          <div style={{
+            height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 20px", borderBottom: "1px solid var(--border-subtle)",
           }}>
-            {/* Top bar with close button */}
-            <div style={{
-              height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "0 20px", borderBottom: "1px solid var(--border-subtle)",
-            }}>
-              <div className="flex items-center gap-3">
-                <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
-                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
-              </div>
-              <button
+            <div className="flex items-center gap-3">
+              <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
+            </div>
+            <button
+              onClick={() => setMenuOpen(false)}
+              style={{
+                width: 34, height: 34,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 8, border: "none",
+                background: "transparent",
+                color: "var(--text-tertiary)",
+                cursor: "pointer",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Centered menu items */}
+          <div style={{
+            flex: 1, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 12,
+          }}>
+            {NAV_LINKS.map(link => (
+              <Link
+                key={link.label}
+                href={link.href}
                 onClick={() => setMenuOpen(false)}
                 style={{
-                  width: 34, height: 34,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: 8, border: "none",
-                  background: "transparent",
-                  color: "var(--text-tertiary)",
-                  cursor: "pointer",
+                  padding: "14px 48px",
+                  borderRadius: 12,
+                  fontSize: 20,
+                  fontWeight: isNavActive(link) ? 700 : 500,
+                  color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
+                  background: isNavActive(link) ? "rgba(255,255,255,0.05)" : "transparent",
+                  border: isNavActive(link) ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                  minWidth: 180,
+                  textAlign: "center" as const,
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Centered menu items */}
-            <div style={{
-              flex: 1, display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", gap: 12,
-            }}>
-              {NAV_LINKS.map(link => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    padding: "14px 40px",
-                    borderRadius: 12,
-                    fontSize: 20,
-                    fontWeight: isNavActive(link) ? 700 : 500,
-                    color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
-                    background: isNavActive(link) ? "rgba(255,255,255,0.06)" : "transparent",
-                    border: isNavActive(link) ? "1px solid var(--border-subtle)" : "1px solid transparent",
-                    textDecoration: "none",
-                    transition: "all 0.2s",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+                {link.label}
+              </Link>
+            ))}
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       {/* ─── Main Content ─── */}
       <main className="container-width" style={{ paddingTop: 32, paddingBottom: 20 }}>
         {/* Title + Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5" style={{ marginBottom: 40 }}>
+          {/* Category Dropdown — mobile (above title) */}
+          <CategoryDropdown category={category} setCategory={setCategory} />
+
           <div>
             <h2 className="text-xl font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
               Latest Updates
@@ -809,9 +846,6 @@ export default function Home() {
               Curated from 28 trusted sources
             </p>
           </div>
-
-          {/* Category Dropdown — mobile */}
-          <CategoryDropdown category={category} setCategory={setCategory} />
 
           {/* Category Tabs — desktop */}
           <div

@@ -96,6 +96,7 @@ export default function TabNavigation({ children }: TabNavigationProps) {
     const pathname = usePathname();
     const [menuOpen, setMenuOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [tabDropdownOpen, setTabDropdownOpen] = useState(false);
     const [apiKey, setApiKey] = useState("");
 
     useEffect(() => {
@@ -104,7 +105,7 @@ export default function TabNavigation({ children }: TabNavigationProps) {
     }, []);
 
     // Close mobile menu on route change
-    useEffect(() => { setMenuOpen(false); }, [pathname]);
+    useEffect(() => { setMenuOpen(false); setTabDropdownOpen(false); }, [pathname]);
 
     const activeTab = TABS.find(t => pathname.startsWith(t.href))?.id ?? "fear-greed";
 
@@ -214,79 +215,79 @@ export default function TabNavigation({ children }: TabNavigationProps) {
                     </div>
                 </div>
 
-                {/* Full-screen Mobile Menu */}
-                {menuOpen && (
-                    <div className="md:hidden" style={{
-                        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50,
-                        background: "#0a0a0b",
-                        display: "flex", flexDirection: "column",
+            </header>
+
+            {/* Full-screen Mobile Menu (outside header so position:fixed works) */}
+            {menuOpen && (
+                <div className="md:hidden" style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+                    background: "#0a0a0b",
+                    display: "flex", flexDirection: "column",
+                }}>
+                    {/* Top bar with close button */}
+                    <div style={{
+                        height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "0 20px", borderBottom: "1px solid var(--border-subtle)",
                     }}>
-                        {/* Top bar with close button */}
-                        <div style={{
-                            height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "0 20px", borderBottom: "1px solid var(--border-subtle)",
-                        }}>
-                            <div className="flex items-center gap-3">
-                                <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
-                                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
-                            </div>
-                            <button
+                        <div className="flex items-center gap-3">
+                            <img src="/browser-news.png" alt="Browser News" className="w-7 h-7 rounded-lg" style={{ objectFit: "contain" }} />
+                            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Browser News</span>
+                        </div>
+                        <button
+                            onClick={() => setMenuOpen(false)}
+                            style={{
+                                width: 34, height: 34,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                borderRadius: 8, border: "none",
+                                background: "transparent",
+                                color: "var(--text-tertiary)",
+                                cursor: "pointer",
+                            }}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Centered menu items */}
+                    <div style={{
+                        flex: 1, display: "flex", flexDirection: "column",
+                        alignItems: "center", justifyContent: "center", gap: 12,
+                    }}>
+                        {NAV_LINKS.map(link => (
+                            <Link
+                                key={link.label}
+                                href={link.href}
                                 onClick={() => setMenuOpen(false)}
                                 style={{
-                                    width: 34, height: 34,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    borderRadius: 8, border: "none",
-                                    background: "transparent",
-                                    color: "var(--text-tertiary)",
-                                    cursor: "pointer",
+                                    padding: "14px 48px",
+                                    borderRadius: 12,
+                                    fontSize: 20,
+                                    fontWeight: isNavActive(link) ? 700 : 500,
+                                    color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
+                                    background: isNavActive(link) ? "rgba(255,255,255,0.05)" : "transparent",
+                                    border: isNavActive(link) ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
+                                    textDecoration: "none",
+                                    transition: "all 0.2s",
+                                    minWidth: 180,
+                                    textAlign: "center" as const,
                                 }}
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 6L6 18" /><path d="M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Centered menu items */}
-                        <div style={{
-                            flex: 1, display: "flex", flexDirection: "column",
-                            alignItems: "center", justifyContent: "center", gap: 12,
-                        }}>
-                            {NAV_LINKS.map(link => (
-                                <Link
-                                    key={link.label}
-                                    href={link.href}
-                                    onClick={() => setMenuOpen(false)}
-                                    style={{
-                                        padding: "14px 40px",
-                                        borderRadius: 12,
-                                        fontSize: 20,
-                                        fontWeight: isNavActive(link) ? 700 : 500,
-                                        color: isNavActive(link) ? "var(--text-primary)" : "var(--text-tertiary)",
-                                        background: isNavActive(link) ? "rgba(255,255,255,0.06)" : "transparent",
-                                        border: isNavActive(link) ? "1px solid var(--border-subtle)" : "1px solid transparent",
-                                        textDecoration: "none",
-                                        transition: "all 0.2s",
-                                        letterSpacing: "0.01em",
-                                    }}
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-                        </div>
+                                {link.label}
+                            </Link>
+                        ))}
                     </div>
-                )}
-            </header>
+                </div>
+            )}
 
             {/* Tab Navigation (sub-tabs for Analytics) */}
             {NAV_LINKS[0].matchPaths.some(p => pathname.startsWith(p)) && (
                 <div className="container-width" style={{ paddingTop: 20 }}>
-                    <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border-subtle)" }}>
+                    {/* Desktop: horizontal tabs */}
+                    <div className="hidden md:flex" style={{ gap: 0, borderBottom: "1px solid var(--border-subtle)" }}>
                         {TABS.map(tab => {
                             const isActive = activeTab === tab.id;
-                            const activeColor = tab.id === "fear-greed" ? "#f59e0b"
-                                : tab.id === "altcoin-season" ? "#22c55e"
-                                    : "#a78bfa";
                             return (
                                 <Link
                                     key={tab.id}
@@ -301,8 +302,8 @@ export default function TabNavigation({ children }: TabNavigationProps) {
                                         textDecoration: "none",
                                         textAlign: "center",
                                         background: "transparent",
-                                        color: isActive ? activeColor : "var(--text-tertiary)",
-                                        borderBottom: isActive ? `2px solid ${activeColor}` : "2px solid transparent",
+                                        color: isActive ? "#a78bfa" : "var(--text-tertiary)",
+                                        borderBottom: isActive ? "2px solid #a78bfa" : "2px solid transparent",
                                         marginBottom: -1,
                                     }}
                                 >
@@ -313,6 +314,69 @@ export default function TabNavigation({ children }: TabNavigationProps) {
                                 </Link>
                             );
                         })}
+                    </div>
+
+                    {/* Mobile: custom dropdown */}
+                    <div className="md:hidden" style={{ position: "relative" }}>
+                        <button
+                            onClick={() => setTabDropdownOpen(!tabDropdownOpen)}
+                            style={{
+                                width: "100%",
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "10px 14px",
+                                borderRadius: 10,
+                                border: "1px solid var(--border-subtle)",
+                                background: "rgba(255,255,255,0.03)",
+                                color: "var(--text-primary)",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            {TABS.find(t => t.id === activeTab)?.label ?? "Select"}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                style={{ transition: "transform 0.2s", transform: tabDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                                <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                        </button>
+
+                        {tabDropdownOpen && (
+                            <div style={{
+                                position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 30,
+                                background: "#0a0a0b",
+                                border: "1px solid var(--border-subtle)",
+                                borderRadius: 10,
+                                padding: "4px",
+                                display: "flex", flexDirection: "column", gap: 2,
+                            }}>
+                                {TABS.map(tab => {
+                                    const isActive = activeTab === tab.id;
+                                    return (
+                                        <Link
+                                            key={tab.id}
+                                            href={tab.href}
+                                            onClick={() => setTabDropdownOpen(false)}
+                                            style={{
+                                                padding: "10px 14px",
+                                                borderRadius: 8,
+                                                fontSize: 13,
+                                                fontWeight: isActive ? 600 : 500,
+                                                color: isActive ? "#a78bfa" : "var(--text-tertiary)",
+                                                background: isActive ? "rgba(167,139,250,0.08)" : "transparent",
+                                                textDecoration: "none",
+                                                transition: "all 0.15s",
+                                            }}
+                                        >
+                                            {tab.label}
+                                            {tab.soon && (
+                                                <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.5, fontWeight: 400 }}>Soon</span>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
