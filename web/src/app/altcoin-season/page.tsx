@@ -98,7 +98,7 @@ function AltcoinSeasonScoreChart({ scoreHistory }: { scoreHistory: AltcoinSeason
     return (
         <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Altcoin Season Score</span>
+                <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Score History</span>
                 <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
                     {filters.map(f => (
                         <button key={f} onClick={() => setFilter(f)} style={{
@@ -668,9 +668,9 @@ export default function AltcoinSeasonPage() {
                                             border: "1px solid var(--border-subtle)",
                                             textAlign: "center",
                                         }}>
-                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
+                                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, marginBottom: 4 }}>
                                                 <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>All-Time High</span>
-                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{high ? new Date(high.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
+                                                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{high ? new Date(high.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
                                             </div>
                                             <div style={{ fontSize: 11, color: high ? getSeasonColor(high.score) : "var(--text-tertiary)", fontWeight: 600 }}>{high ? `${high.label} — ${high.score}` : "—"}</div>
                                         </div>
@@ -680,9 +680,9 @@ export default function AltcoinSeasonPage() {
                                             border: "1px solid var(--border-subtle)",
                                             textAlign: "center",
                                         }}>
-                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
+                                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, marginBottom: 4 }}>
                                                 <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>All-Time Low</span>
-                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{low ? new Date(low.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
+                                                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{low ? new Date(low.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
                                             </div>
                                             <div style={{ fontSize: 11, color: low ? getSeasonColor(low.score) : "var(--text-tertiary)", fontWeight: 600 }}>{low ? `${low.label} — ${low.score}` : "—"}</div>
                                         </div>
