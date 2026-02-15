@@ -44,3 +44,23 @@ export type AltcoinSeasonEntry = {
     index_label: string | null;
     scraped_at: string;
 };
+
+export type AltcoinSeasonScore = {
+    id: number;
+    score: number;
+    label: string;
+    reason: string | null;
+    total_market_cap: number | null;
+    altcoin_market_cap: number | null;
+    btc_dominance: number | null;
+    headlines: { title: string; link: string; site: string }[] | null;
+    factors: {
+        ethVsBtc: number | null;
+        marketCapShare: number | null;
+        defiTvl: number | null;
+        volumeShare: number | null;
+        social: number | null;
+        marketRef: number | null;
+    } | null;
+    created_at: string;
+};

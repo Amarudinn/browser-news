@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { supabase, type AltcoinSeasonEntry } from "@/lib/supabase";
+import { supabase, type AltcoinSeasonEntry, type AltcoinSeasonScore } from "@/lib/supabase";
 import TabNavigation from "@/app/components/TabNavigation";
 
 function timeAgo(dateStr: string): string {
@@ -16,18 +16,6 @@ function timeAgo(dateStr: string): string {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// Dummy historical data (will be replaced with real data later)
-const DUMMY_HISTORY = {
-    yesterday: { score: 75, seasonLabel: "Bitcoin Season" },
-    lastWeek: { score: 5, seasonLabel: "Bitcoin Season" },
-    lastMonth: { score: 61, seasonLabel: "Altcoin Season" },
-};
-
-const DUMMY_YEARLY = {
-    high: { score: 60, seasonLabel: "Altcoin Season", date: "Sep 20, 2025" },
-    low: { score: 26, seasonLabel: "Bitcoin Season", date: "Apr 26, 2025" },
-};
-
 function getSeasonLabel(score: number): string {
     if (score >= 75) return "Altcoin Season";
     if (score >= 50) return "Semi Altcoin Season";
@@ -36,24 +24,11 @@ function getSeasonLabel(score: number): string {
 }
 
 function getSeasonColor(score: number): string {
-    if (score >= 75) return "#16a34a"; // dark green - Altcoin Season
-    if (score >= 50) return "#22c55e"; // green - Semi Altcoin Season
-    if (score >= 25) return "#eab308"; // yellow - Bitcoin Season
-    return "#f97316";                  // orange - Bitcoin Season
+    if (score >= 75) return "#16a34a";
+    if (score >= 50) return "#22c55e";
+    if (score >= 25) return "#eab308";
+    return "#f97316";
 }
-
-// =====================
-// Dummy chart data
-// =====================
-const DUMMY_CHART_DATA = Array.from({ length: 90 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (89 - i));
-    const scoreBase = 40 + Math.sin(i * 0.15) * 25 + Math.cos(i * 0.08) * 10;
-    const score = Math.max(5, Math.min(95, Math.round(scoreBase + (Math.random() - 0.5) * 10)));
-    const capBase = 1.2 + Math.sin(i * 0.1) * 0.3 + i * 0.005;
-    const capT = Math.round((capBase + (Math.random() - 0.5) * 0.1) * 1000) / 1000;
-    return { date: d.toISOString(), score, capT };
-});
 
 type AltChartFilter = "1W" | "1M" | "3M" | "ALL";
 
@@ -71,15 +46,22 @@ function smoothLine(pts: { x: number; y: number }[]) {
 // =====================
 // Combined Chart: Score + Market Cap (1 chart, 2 lines)
 // =====================
-function AltcoinSeasonScoreChart() {
+function AltcoinSeasonScoreChart({ scoreHistory }: { scoreHistory: AltcoinSeasonScore[] }) {
     const [filter, setFilter] = useState<AltChartFilter>("ALL");
     const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+    // Convert scoreHistory to chart data
+    const chartData = scoreHistory.map(s => ({
+        date: s.created_at,
+        score: s.score,
+        capT: s.altcoin_market_cap ? s.altcoin_market_cap / 1e12 : 0,
+    })).reverse();
 
     const filtered = (() => {
         const now = Date.now();
         const ms: Record<AltChartFilter, number> = { "1W": 7 * 86400000, "1M": 30 * 86400000, "3M": 90 * 86400000, "ALL": Infinity };
         const cutoff = now - ms[filter];
-        return DUMMY_CHART_DATA.filter(e => new Date(e.date).getTime() >= cutoff);
+        return chartData.filter(e => new Date(e.date).getTime() >= cutoff);
     })();
 
     if (filtered.length < 2) return <p style={{ color: "var(--text-tertiary)", textAlign: "center", padding: 20, fontSize: 12 }}>Not enough data</p>;
@@ -210,14 +192,31 @@ function AltcoinSeasonScoreChart() {
 export default function AltcoinSeasonPage() {
     const [altcoins, setAltcoins] = useState<AltcoinSeasonEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showSummary, setShowSummary] = useState(false);
+    const [showDownload, setShowDownload] = useState(false);
+    const [scoreData, setScoreData] = useState<AltcoinSeasonScore | null>(null);
+    const [scoreHistory, setScoreHistory] = useState<AltcoinSeasonScore[]>([]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
+        // Fetch altcoin coins list
         const { data } = await supabase
             .from("altcoin_season")
             .select("*")
             .order("rank", { ascending: true });
         if (data) setAltcoins(data);
+
+        // Fetch latest AI score
+        const { data: scores } = await supabase
+            .from("altcoin_season_score")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(90);
+        if (scores && scores.length > 0) {
+            setScoreData(scores[0]);
+            setScoreHistory(scores);
+        }
+
         setLoading(false);
     }, []);
 
@@ -225,17 +224,275 @@ export default function AltcoinSeasonPage() {
         fetchData();
     }, [fetchData]);
 
-    const indexScore = altcoins.length > 0 ? altcoins[0].index_score : null;
-    const indexLabel = altcoins.length > 0 ? altcoins[0].index_label : null;
-    const score = 75; // HARDCODED DUMMY — ubah angka ini buat testing (0-100)
+    const score = scoreData?.score ?? 0;
+    const latestLabel = scoreData?.label ?? "—";
 
     return (
         <TabNavigation onRefresh={fetchData}>
-            <h2 className="text-xl font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Altcoin Season Index
-            </h2>
+            <div style={{ marginBottom: 24 }}>
+                <h2 className="text-xl font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                    Altcoin Season Index
+                </h2>
+                <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
+                    AI-powered crypto market sentiment
+                </p>
+            </div>
 
-            {loading ? (
+            {showSummary ? (
+                /* ========== SUMMARY VIEW ========== */
+                <div>
+                    {/* Back button */}
+                    <button
+                        onClick={() => setShowSummary(false)}
+                        style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            background: "none", border: "none", cursor: "pointer",
+                            color: "var(--text-tertiary)", fontSize: 13, fontWeight: 500,
+                            marginBottom: 20, padding: 0,
+                        }}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 12H5" /><polyline points="12 19 5 12 12 5" />
+                        </svg>
+                        Back to Index
+                    </button>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                        {/* Card 1: AI Summary */}
+                        <div className="news-card news-card-static" style={{ padding: 20 }}>
+                            <div style={{ marginBottom: 12 }}>
+                                <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>AI Summary</span>
+                            </div>
+                            <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                                {scoreData?.reason ?? "No AI analysis available yet. Run altcoin-season-score.js to generate the first score."}
+                            </p>
+                        </div>
+
+                        {/* Card 2: Factor Breakdown */}
+                        <div className="news-card news-card-static" style={{ padding: "16px 12px" }}>
+                            <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+                                <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                                    Factor Breakdown
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                {(scoreData?.factors ? [
+                                    { key: "ethVsBtc", label: "ETH vs BTC Performance", weight: "20%", source: "CoinGecko", score: scoreData.factors.ethVsBtc },
+                                    { key: "marketCapShare", label: "Altcoin Market Cap Share", weight: "20%", source: "CoinGecko", score: scoreData.factors.marketCapShare },
+                                    { key: "defiTvl", label: "DeFi TVL Growth", weight: "20%", source: "DefiLlama", score: scoreData.factors.defiTvl },
+                                    { key: "volumeShare", label: "Altcoin Volume Share", weight: "10%", source: "CoinGecko", score: scoreData.factors.volumeShare },
+                                    { key: "social", label: "Social Media", weight: "20%", source: "Membit", score: scoreData.factors.social },
+                                    { key: "marketRef", label: "Market Reference", weight: "10%", source: "CMC", score: scoreData.factors.marketRef },
+                                ] : []).filter(f => f.score != null).map((factor) => (
+                                    <div key={factor.key} style={{ padding: "8px 0" }}>
+                                        <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                                            <span className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>
+                                                {factor.label} <span style={{ color: "var(--text-tertiary)", fontSize: 10 }}>({factor.weight})</span>
+                                                {factor.source && <span style={{ fontSize: 9, color: "var(--text-tertiary)", marginLeft: 6 }}>{factor.source}</span>}
+                                            </span>
+                                            <span className="text-[13px] font-bold" style={{ color: getSeasonColor(factor.score!) }}>
+                                                {factor.score}
+                                            </span>
+                                        </div>
+                                        <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                                            <div style={{
+                                                height: "100%",
+                                                width: `${factor.score}%`,
+                                                borderRadius: 3,
+                                                background: `linear-gradient(90deg, ${getSeasonColor(Math.max(0, factor.score! - 20))}, ${getSeasonColor(factor.score!)})`,
+                                                transition: "width 0.8s ease-out"
+                                            }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Card 3: Headlines Analyzed */}
+                        <div className="news-card news-card-static" style={{ padding: "16px 12px" }}>
+                            <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+                                <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                                    Headlines Analyzed
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                {(scoreData?.headlines && scoreData.headlines.length > 0) ? scoreData.headlines.map((h, i) => (
+                                    <a
+                                        key={i}
+                                        href={h.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-start gap-3 group"
+                                        style={{ textDecoration: "none", padding: "10px 12px", borderRadius: 10, background: "var(--bg-base)", border: "1px solid var(--border-subtle)", transition: "border-color 0.2s" }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-hover)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
+                                    >
+                                        <span className="text-[11px] font-bold" style={{ color: "var(--accent)", minWidth: 18 }}>
+                                            {i + 1}.
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-medium leading-[1.5] line-clamp-2" style={{ color: "var(--text-primary)" }}>
+                                                {h.title}
+                                            </p>
+                                            <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                                                {h.site}
+                                            </span>
+                                        </div>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}>
+                                            <path d="M7 17L17 7" />
+                                            <path d="M7 7h10v10" />
+                                        </svg>
+                                    </a>
+                                )) : (
+                                    <p className="text-[12px]" style={{ color: "var(--text-tertiary)", textAlign: "center", padding: 16 }}>No headlines available yet</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Card 4: Update History */}
+                        <div className="news-card news-card-static" style={{ padding: "16px 12px" }}>
+                            <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                                        Update History
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                                        Last 30 days
+                                    </span>
+                                    <div style={{ position: "relative" }}>
+                                        <button
+                                            onClick={() => setShowDownload(!showDownload)}
+                                            className="btn-summary"
+                                            style={{
+                                                background: "rgba(255,255,255,0.08)",
+                                                border: "1px solid var(--border-subtle)",
+                                                borderRadius: 6,
+                                                padding: "4px 10px",
+                                                cursor: "pointer",
+                                                color: "var(--text-secondary)",
+                                                fontSize: 10,
+                                                fontWeight: 600,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 4,
+                                            }}
+                                        >
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                <polyline points="7 10 12 15 17 10" />
+                                                <line x1="12" y1="15" x2="12" y2="3" />
+                                            </svg>
+                                            Download
+                                        </button>
+                                        {showDownload && (
+                                            <>
+                                                <div
+                                                    onClick={() => setShowDownload(false)}
+                                                    style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                                                />
+                                                <div style={{
+                                                    position: "absolute",
+                                                    top: "calc(100% + 6px)",
+                                                    right: 0,
+                                                    background: "var(--bg-surface)",
+                                                    border: "1px solid var(--border-subtle)",
+                                                    borderRadius: 8,
+                                                    padding: 4,
+                                                    zIndex: 100,
+                                                    minWidth: 100,
+                                                }}>
+                                                    {(["30D", "1Y", "ALL"] as const).map(r => {
+                                                        const downloadJSON = (range: string) => {
+                                                            const blob = new Blob([JSON.stringify(scoreHistory, null, 2)], { type: "application/json" });
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement("a");
+                                                            a.href = url;
+                                                            a.download = `altcoin-season-${range.toLowerCase()}-${new Date().toISOString().split("T")[0]}.json`;
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                            setShowDownload(false);
+                                                        };
+                                                        return (
+                                                            <button
+                                                                key={r}
+                                                                onClick={() => downloadJSON(r)}
+                                                                style={{
+                                                                    display: "block",
+                                                                    width: "100%",
+                                                                    padding: "6px 12px",
+                                                                    fontSize: 11,
+                                                                    fontWeight: 500,
+                                                                    color: "var(--text-secondary)",
+                                                                    background: "none",
+                                                                    border: "none",
+                                                                    cursor: "pointer",
+                                                                    borderRadius: 5,
+                                                                    textAlign: "left",
+                                                                    transition: "background 0.15s",
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                                                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                                            >
+                                                                {r === "30D" ? "Last 30 Days" : r === "1Y" ? "Last 1 Year" : "All Time"}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                    <thead>
+                                        <tr>
+                                            <th className="text-[11px] font-semibold text-left" style={{ color: "var(--text-tertiary)", padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Date</th>
+                                            <th className="text-[11px] font-semibold text-center" style={{ color: "var(--text-tertiary)", padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Score</th>
+                                            <th className="text-[11px] font-semibold text-left" style={{ color: "var(--text-tertiary)", padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Label</th>
+                                            <th className="text-[11px] font-semibold text-right hidden sm:table-cell" style={{ color: "var(--text-tertiary)", padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Market Cap</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {scoreHistory.map((entry, i) => (
+                                            <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                                <td className="text-[12px]" style={{ color: "var(--text-secondary)", padding: "10px 12px" }}>
+                                                    {new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)", marginLeft: 8 }}>
+                                                        {new Date(entry.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                                                    </span>
+                                                </td>
+                                                <td className="text-center">
+                                                    <span
+                                                        className="text-[13px] font-bold"
+                                                        style={{
+                                                            color: getSeasonColor(entry.score),
+                                                            padding: "2px 10px",
+                                                            borderRadius: 6,
+                                                            background: `${getSeasonColor(entry.score)}15`,
+                                                        }}
+                                                    >
+                                                        {entry.score}
+                                                    </span>
+                                                </td>
+                                                <td className="text-[12px] font-medium" style={{ color: getSeasonColor(entry.score), padding: "10px 12px" }}>
+                                                    {entry.label}
+                                                </td>
+                                                <td className="text-[12px] text-right hidden sm:table-cell" style={{ color: "var(--text-secondary)", padding: "10px 12px" }}>
+                                                    {entry.altcoin_market_cap ? `$${(entry.altcoin_market_cap / 1e12).toFixed(2)}T` : "—"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : loading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div className="news-card news-card-static" style={{ padding: 40, textAlign: "center" }}>
                         <div className="shimmer-bg" style={{ width: 200, height: 120, margin: "0 auto", borderRadius: 12 }} />
@@ -263,6 +520,7 @@ export default function AltcoinSeasonPage() {
                                 <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Altcoin Season</span>
                                 <button
                                     className="btn-summary"
+                                    onClick={() => setShowSummary(true)}
                                     style={{
                                         background: "rgba(255,255,255,0.08)",
                                         border: "1px solid var(--border-subtle)",
@@ -356,72 +614,90 @@ export default function AltcoinSeasonPage() {
                                     Historical Values
                                 </div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                    {[
-                                        { period: "Yesterday", ...DUMMY_HISTORY.yesterday },
-                                        { period: "Last Week", ...DUMMY_HISTORY.lastWeek },
-                                        { period: "Last Month", ...DUMMY_HISTORY.lastMonth },
-                                    ].map((item) => (
-                                        <div key={item.period} style={{
-                                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                                            padding: "8px 12px", borderRadius: 8,
-                                            background: "rgba(255,255,255,0.03)",
-                                            border: "1px solid var(--border-subtle)",
-                                        }}>
-                                            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
-                                                {item.period}
-                                            </span>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                <span style={{
-                                                    fontSize: 12, fontWeight: 700, color: getSeasonColor(item.score),
-                                                }}>
-                                                    {item.score}
+                                    {(() => {
+                                        const now = Date.now();
+                                        const findClosest = (targetMs: number) => {
+                                            let best: AltcoinSeasonScore | null = null;
+                                            let bestDiff = Infinity;
+                                            for (const s of scoreHistory) {
+                                                const diff = Math.abs(new Date(s.created_at).getTime() - (now - targetMs));
+                                                if (diff < bestDiff) { bestDiff = diff; best = s; }
+                                            }
+                                            return best;
+                                        };
+                                        const items = [
+                                            { period: "Yesterday", data: findClosest(86400000) },
+                                            { period: "Last Week", data: findClosest(7 * 86400000) },
+                                            { period: "Last Month", data: findClosest(30 * 86400000) },
+                                        ];
+                                        return items.map((item) => (
+                                            <div key={item.period} style={{
+                                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                                padding: "8px 12px", borderRadius: 8,
+                                                background: "rgba(255,255,255,0.03)",
+                                                border: "1px solid var(--border-subtle)",
+                                            }}>
+                                                <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
+                                                    {item.period}
                                                 </span>
-                                                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
-                                                    {item.seasonLabel}
-                                                </span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                                    <span style={{
+                                                        fontSize: 12, fontWeight: 700, color: item.data ? getSeasonColor(item.data.score) : "var(--text-tertiary)",
+                                                    }}>
+                                                        {item.data?.score ?? "—"}
+                                                    </span>
+                                                    <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+                                                        {item.data?.label ?? "—"}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ));
+                                    })()}
                                 </div>
                             </div>
 
                             {/* Yearly High & Low row */}
-                            <div style={{ display: "flex", gap: 8, marginTop: 0 }}>
-                                {/* Yearly High */}
-                                <div style={{
-                                    flex: 1, padding: "8px 12px", borderRadius: 8,
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: "1px solid var(--border-subtle)",
-                                    textAlign: "center",
-                                }}>
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
-                                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Yearly High</span>
-                                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{DUMMY_YEARLY.high.date}</span>
+                            {(() => {
+                                const high = scoreHistory.reduce<AltcoinSeasonScore | null>((best, s) => !best || s.score > best.score ? s : best, null);
+                                const low = scoreHistory.reduce<AltcoinSeasonScore | null>((best, s) => !best || s.score < best.score ? s : best, null);
+                                return (
+                                    <div style={{ display: "flex", gap: 8, marginTop: 0 }}>
+                                        <div style={{
+                                            flex: 1, padding: "8px 12px", borderRadius: 8,
+                                            background: "rgba(255,255,255,0.03)",
+                                            border: "1px solid var(--border-subtle)",
+                                            textAlign: "center",
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
+                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>All-Time High</span>
+                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{high ? new Date(high.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: high ? getSeasonColor(high.score) : "var(--text-tertiary)", fontWeight: 600 }}>{high ? `${high.label} — ${high.score}` : "—"}</div>
+                                        </div>
+                                        <div style={{
+                                            flex: 1, padding: "8px 12px", borderRadius: 8,
+                                            background: "rgba(255,255,255,0.03)",
+                                            border: "1px solid var(--border-subtle)",
+                                            textAlign: "center",
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
+                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>All-Time Low</span>
+                                                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{low ? new Date(low.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: low ? getSeasonColor(low.score) : "var(--text-tertiary)", fontWeight: 600 }}>{low ? `${low.label} — ${low.score}` : "—"}</div>
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: 11, color: getSeasonColor(DUMMY_YEARLY.high.score), fontWeight: 600 }}>{DUMMY_YEARLY.high.seasonLabel} — {DUMMY_YEARLY.high.score}</div>
-                                </div>
-                                {/* Yearly Low */}
-                                <div style={{
-                                    flex: 1, padding: "8px 12px", borderRadius: 8,
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: "1px solid var(--border-subtle)",
-                                    textAlign: "center",
-                                }}>
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
-                                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Yearly Low</span>
-                                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{DUMMY_YEARLY.low.date}</span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: getSeasonColor(DUMMY_YEARLY.low.score), fontWeight: 600 }}>{DUMMY_YEARLY.low.seasonLabel} — {DUMMY_YEARLY.low.score}</div>
-                                </div>
-                            </div>
+                                );
+                            })()}
 
                         </div>
                     </div>
 
                     {/* ========== CHART CARD: Altcoin Season Score + Market Cap ========== */}
                     <div className="news-card news-card-static" style={{ padding: 16, marginBottom: 20 }}>
-                        <AltcoinSeasonScoreChart />
+                        <AltcoinSeasonScoreChart scoreHistory={scoreHistory} />
                     </div>
+
                     {/* ========== COINS LIST ========== */}
                     <div style={{ marginBottom: 12 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>
