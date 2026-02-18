@@ -832,7 +832,7 @@ export default function Home() {
       )}
 
       {/* ─── Main Content ─── */}
-      <main className="container-width" style={{ paddingTop: 32, paddingBottom: 20 }}>
+      <main className="container-width" style={{ paddingTop: 20, paddingBottom: 20 }}>
         {/* Category Tabs — desktop (above title, like TabNavigation) */}
         <div
           className="desktop-only"
@@ -866,9 +866,11 @@ export default function Home() {
         </div>
 
         {/* Title */}
-        <div style={{ marginBottom: 32, marginTop: 24 }}>
+        <div style={{ marginBottom: 32 }}>
           {/* Category Dropdown — mobile (above title) */}
-          <CategoryDropdown category={category} setCategory={setCategory} />
+          <div style={{ marginBottom: 16 }}>
+            <CategoryDropdown category={category} setCategory={setCategory} />
+          </div>
 
           <div>
             <h2 className="text-xl font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
