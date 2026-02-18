@@ -32,7 +32,7 @@ async function summarizeWithGemini(apiKey: string, url: string): Promise<string>
           {
             parts: [
               {
-                text: `Read and summarize the news article from the following URL in 3-5 key points. Always respond in English regardless of the article's language. Format each point as a plain numbered list (1. 2. 3.) without using any markdown symbols like asterisks (*), bold (**), or bullet points. Keep it clean and readable.\n\nURL: ${url}`,
+                text: `IMPORTANT: You MUST respond in the SAME language as the article. If the article is written in Indonesian (Bahasa Indonesia), your entire response MUST be in Indonesian. If the article is in English, respond in English.\n\nRead and summarize the news article from the following URL in 3-5 key points. Format each point as a plain numbered list (1. 2. 3.) without using any markdown symbols like asterisks (*), bold (**), or bullet points. Keep it clean and readable.\n\nURL: ${url}`,
               },
             ],
           },
@@ -53,6 +53,41 @@ async function summarizeWithGemini(apiKey: string, url: string): Promise<string>
   const data = await response.json();
   return (
     data.candidates?.[0]?.content?.parts?.[0]?.text || "No summary generated."
+  );
+}
+
+async function generateTweetWithGemini(apiKey: string, title: string, url: string, summary: string): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Create a short, engaging tweet about this news article. The tweet should be concise, informative, and attention-grabbing. Include relevant hashtags (2-3 max). Do NOT include the article URL (it will be added automatically). Keep it under 250 characters. Do not use any markdown formatting. Respond in the same language as the article title.\n\nTitle: ${title}\nSummary: ${summary}\nURL: ${url}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 200,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Gemini API error");
+  }
+
+  const data = await response.json();
+  return (
+    data.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate tweet."
   );
 }
 
@@ -201,10 +236,19 @@ function SummaryModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Tweet draft state
+  const [tweetDraft, setTweetDraft] = useState("");
+  const [tweetLoading, setTweetLoading] = useState(false);
+  const [tweetError, setTweetError] = useState("");
+  const [showTweet, setShowTweet] = useState(false);
+
   useEffect(() => {
     if (!open || !item) return;
     setSummary("");
     setError("");
+    setTweetDraft("");
+    setTweetError("");
+    setShowTweet(false);
 
     if (!apiKey) return;
 
@@ -232,6 +276,28 @@ function SummaryModal({
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
+
+  const handleCreateTweet = async () => {
+    if (!item || !apiKey) return;
+    setShowTweet(true);
+    setTweetLoading(true);
+    setTweetError("");
+    try {
+      const draft = await generateTweetWithGemini(apiKey, item.title, item.link, summary);
+      setTweetDraft(draft.trim());
+    } catch (e: unknown) {
+      setTweetError(e instanceof Error ? e.message : "Failed to generate tweet");
+    } finally {
+      setTweetLoading(false);
+    }
+  };
+
+  const handlePostTweet = () => {
+    if (!item) return;
+    const tweetText = `${tweetDraft}\n\n${item.link}`;
+    const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+    window.open(twitterUrl, "_blank");
+  };
 
   if (!open || !item) return null;
 
@@ -311,8 +377,84 @@ function SummaryModal({
           </div>
         )}
 
-        {/* Footer link */}
-        <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
+        {/* Tweet Draft Card */}
+        {showTweet && (
+          <div style={{ marginTop: 16, padding: "14px", background: "var(--bg-base)", borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--text-primary)" }}>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                Tweet Draft
+              </span>
+            </div>
+
+            {tweetLoading ? (
+              <div>
+                <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+                  <div className="summary-spinner" />
+                  <span className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                    Generating tweet...
+                  </span>
+                </div>
+                <div className="shimmer-bg" style={{ height: 14, width: "100%", marginBottom: 6 }} />
+                <div className="shimmer-bg" style={{ height: 14, width: "70%" }} />
+              </div>
+            ) : tweetError ? (
+              <p className="text-[12px]" style={{ color: "#f87171" }}>⚠️ {tweetError}</p>
+            ) : (
+              <>
+                <p className="text-[13px] leading-[1.6]" style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
+                  {tweetDraft}
+                </p>
+                <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
+                  <span className="text-[11px]" style={{ color: tweetDraft.length > 280 ? "#f87171" : "var(--text-tertiary)" }}>
+                    {tweetDraft.length}/280
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCreateTweet}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 8,
+                        border: "1px solid var(--border-default)",
+                        background: "transparent",
+                        color: "var(--text-secondary)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        fontFamily: "var(--font-sans)",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      🔄 Regenerate
+                    </button>
+                    <button
+                      onClick={handlePostTweet}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "#1d9bf0",
+                        color: "white",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: "var(--font-sans)",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      Post
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between" style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
           <a
             href={item.link}
             target="_blank"
@@ -322,6 +464,31 @@ function SummaryModal({
           >
             Read full article →
           </a>
+          {summary && apiKey && !showTweet && (
+            <button
+              onClick={handleCreateTweet}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "5px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(29, 155, 240, 0.25)",
+                background: "rgba(29, 155, 240, 0.08)",
+                color: "#1d9bf0",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "var(--font-sans)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              Create Tweet
+            </button>
+          )}
         </div>
       </div>
     </div>
