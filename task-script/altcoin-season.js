@@ -9,8 +9,6 @@
 // Cron mode:  node task-script/altcoin-season.js --cron
 
 import 'dotenv/config';
-import fs from 'fs';
-import path from 'path';
 import { chromium } from 'playwright';
 import BrowsercashSDK from '@browsercash/sdk';
 import inquirer from 'inquirer';
@@ -29,8 +27,6 @@ const supabase = createClient(
 // =====================
 const CG_API_KEY = process.env.COINGECKO_API_KEY;
 const CG_BASE = 'https://api.coingecko.com';
-const CACHE_FILE = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), 'coin-logo-cache.json');
-const CACHE_MAX_AGE_DAYS = 30;
 
 async function cgFetch(urlPath) {
     const url = `${CG_BASE}${urlPath}`;
@@ -40,19 +36,9 @@ async function cgFetch(urlPath) {
     return res.json();
 }
 
-// Load logo cache (logos only, 30-day TTL)
+// Load logo cache (in-memory only, no file)
 async function getLogoCache() {
-    if (fs.existsSync(CACHE_FILE)) {
-        try {
-            const cache = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
-            const age = (Date.now() - new Date(cache.updatedAt).getTime()) / 86400000;
-            if (age < CACHE_MAX_AGE_DAYS && cache.coins && Object.keys(cache.coins).length > 50) {
-                console.log(`   📦 Logo cache: ${Object.keys(cache.coins).length} coins (${Math.round(age)}d old)`);
-                return cache.coins;
-            }
-        } catch (e) { /* ignore corrupt cache */ }
-    }
-    return null; // cache miss
+    return null; // always fetch fresh from CoinGecko
 }
 
 // Fetch fresh data from CoinGecko (logos + prices)
@@ -91,13 +77,7 @@ async function fetchCoinGeckoData() {
         console.log(`   \u26a0 Could not fetch page 2: ${e.message}`);
     }
 
-    // Save logo cache (without prices, those change daily)
-    const logoOnly = {};
-    for (const [sym, info] of Object.entries(map)) {
-        logoOnly[sym] = { id: info.id, name: info.name, logo: info.logo };
-    }
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ updatedAt: new Date().toISOString(), coins: logoOnly }, null, 2));
-    console.log(`   \u2705 Cached ${Object.keys(logoOnly).length} logos + fetched fresh prices`);
+    console.log(`   \u2705 Fetched ${Object.keys(map).length} coins with logos + prices`);
 
     return map;
 }
@@ -433,17 +413,7 @@ async function main() {
             // Step 5: Save to Supabase
             await saveToSupabase(data.coins, data.indexScore, data.indexLabel);
 
-            // Step 6: Export JSON
-            const filename = `altcoin-season-${new Date().toISOString().split('T')[0]}.json`;
-            const exportData = {
-                scrapedAt: new Date().toISOString(),
-                indexScore: data.indexScore,
-                indexLabel: data.indexLabel,
-                totalCoins: data.coinsCount,
-                coins: data.coins
-            };
-            fs.writeFileSync(filename, JSON.stringify(exportData, null, 2));
-            console.log(`\n  📁 Exported to ${filename}`);
+
         } else {
             console.log('  ❌ No coin data found');
         }

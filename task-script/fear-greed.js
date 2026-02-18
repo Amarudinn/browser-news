@@ -794,7 +794,7 @@ You MUST respond with ONLY a valid JSON object, no other text:
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 0.2,
+                        temperature: 0.5,
                         maxOutputTokens: 500,
                     }
                 })

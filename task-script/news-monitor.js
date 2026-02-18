@@ -645,10 +645,17 @@ async function main() {
 
     // Cek jumlah berita di database
     const { count } = await supabase.from('news').select('*', { count: 'exact', head: true });
+
+    // Acak urutan situs (Fisher-Yates shuffle)
+    for (let i = NEWS_SITES.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [NEWS_SITES[i], NEWS_SITES[j]] = [NEWS_SITES[j], NEWS_SITES[i]];
+    }
+
     const total = NEWS_SITES.length;
 
     console.log(`\n>> News Monitor - Supabase Edition`);
-    console.log(`>> Total situs: ${total}`);
+    console.log(`>> Total situs: ${total} (urutan diacak)`);
     console.log(`>> Berita di database: ${count || 0}`);
     console.log(`>> Estimasi poin: ~${total}k (1 sesi per situs)\n`);
 

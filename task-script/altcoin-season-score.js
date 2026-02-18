@@ -714,25 +714,74 @@ NOTE: Use this as a cross-reference. Your analysis should roughly align with thi
         });
     }
 
-    const prompt = `You are an expert crypto market analyst creating an Altcoin Season Index. Analyze ALL the following data factors and determine whether we are in Altcoin Season or Bitcoin Season.
+    // Current date for context
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // e.g. "2026-02-17"
+    const timeStr = now.toISOString().split('T')[1].substring(0, 5); // e.g. "04:53"
+
+    const prompt = `You are an expert quantitative crypto market analyst. Today is ${dateStr} ${timeStr} UTC.
+
+Your task: Calculate an Altcoin Season Index Score (0-100) using STRICT MATHEMATICAL scoring.
 
 ${dataSection}
 
-=== SCORING INSTRUCTIONS ===
-Calculate a weighted Altcoin Season score from 0 to 100 based on the available factors above.
-If any factor data is missing, redistribute its weight proportionally among the remaining factors.
+=== MANDATORY SCORING METHOD ===
+You MUST score each factor independently using the rubrics below, then calculate the weighted average.
 
-SCORE MEANING:
-- 0-24: Bitcoin Season (BTC dominates, altcoins underperform, money flows to BTC)
-- 25-44: Mostly Bitcoin (BTC still leading, some altcoin interest)
-- 45-55: Neutral (mixed signals, no clear trend)
-- 56-74: Mostly Altcoins (altcoins gaining strength, money flowing from BTC)
-- 75-100: Altcoin Season (altcoins outperform, high DeFi activity, alt speculation)
+FACTOR 1 — ETH vs BTC (Weight: 20%):
+- Score 80-100: ETH outperforms BTC by >5% on ALL timeframes (24h, 7d, 30d)
+- Score 60-79: ETH outperforms BTC on 2 of 3 timeframes
+- Score 40-59: Mixed — ETH outperforms on 1 timeframe or roughly equal
+- Score 20-39: BTC outperforms ETH on 2 of 3 timeframes
+- Score 0-19: BTC outperforms ETH by >5% on ALL timeframes
 
-Be objective and data-driven. Weight each factor accordingly.
+FACTOR 2 — Altcoin Market Cap Share (Weight: 20%):
+- Score 80-100: BTC dominance < 40%
+- Score 60-79: BTC dominance 40-48%
+- Score 40-59: BTC dominance 48-52%
+- Score 20-39: BTC dominance 52-58%
+- Score 0-19: BTC dominance > 58%
 
-You MUST respond with ONLY a valid JSON object, no other text:
-{"score": <number 0-100>, "label": "<Bitcoin Season|Mostly Bitcoin|Neutral|Mostly Altcoins|Altcoin Season>", "reason": "<2-3 sentence explanation covering key factors>", "factors": {"ethVsBtc": <0-100>, "marketCapShare": <0-100>, "defiTvl": <0-100>, "volumeShare": <0-100>, "social": <0-100 or null>, "marketRef": <0-100 or null>}}`;
+FACTOR 3 — DeFi TVL Growth (Weight: 20%):
+- Score 80-100: 30d growth > +15%
+- Score 60-79: 30d growth +5% to +15%
+- Score 40-59: 30d growth -2% to +5%
+- Score 20-39: 30d growth -10% to -2%
+- Score 0-19: 30d growth < -10%
+
+FACTOR 4 — Altcoin Volume Share (Weight: 10%):
+- Score 80-100: Altcoin volume share > 75%
+- Score 60-79: Altcoin volume share 65-75%
+- Score 40-59: Altcoin volume share 55-65%
+- Score 20-39: Altcoin volume share 45-55%
+- Score 0-19: Altcoin volume share < 45%
+
+FACTOR 5 — Social Media (Weight: 20%):
+- Score 80-100: Overwhelmingly bullish altcoin sentiment, "altcoin season" trending
+- Score 60-79: Mostly positive altcoin sentiment, some FOMO
+- Score 40-59: Mixed sentiment, both BTC and altcoin discussion
+- Score 20-39: Mostly BTC-focused sentiment
+- Score 0-19: Fear/bearish sentiment, BTC-only focus
+
+FACTOR 6 — Market Reference (Weight: 10%):
+- Use the CMC score directly as this factor's score. If unavailable, skip and redistribute.
+
+=== CALCULATION STEPS (you MUST follow) ===
+1. Score each available factor using the rubrics above
+2. If any factor is unavailable (null), redistribute its weight proportionally
+3. Calculate: final_score = sum(factor_score × adjusted_weight) for all available factors
+4. Round to nearest integer
+5. Determine label based on final_score:
+   - 0-24: "Bitcoin Season"
+   - 25-44: "Mostly Bitcoin"
+   - 45-55: "Neutral"
+   - 56-74: "Mostly Altcoins"
+   - 75-100: "Altcoin Season"
+
+IMPORTANT: The final score MUST mathematically reflect the weighted average of individual factor scores. Do NOT default to "neutral" or round numbers. Be precise.
+
+Respond with ONLY a valid JSON object:
+{"score": <integer 0-100>, "label": "<Bitcoin Season|Mostly Bitcoin|Neutral|Mostly Altcoins|Altcoin Season>", "reason": "<2-3 sentences explaining the score with specific numbers from the data>", "factors": {"ethVsBtc": <0-100>, "marketCapShare": <0-100>, "defiTvl": <0-100>, "volumeShare": <0-100>, "social": <0-100 or null>, "marketRef": <0-100 or null>}}`;
 
     try {
         const response = await fetch(
@@ -743,8 +792,8 @@ You MUST respond with ONLY a valid JSON object, no other text:
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 0.2,
-                        maxOutputTokens: 500,
+                        temperature: 0.5,
+                        maxOutputTokens: 800,
                     }
                 })
             }

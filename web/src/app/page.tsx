@@ -32,14 +32,14 @@ async function summarizeWithGemini(apiKey: string, url: string): Promise<string>
           {
             parts: [
               {
-                text: `Read and summarize the news article from the following URL in 3-5 key points. Always respond in English regardless of the article's language. Format the summary with clear and concise bullet points.\n\nURL: ${url}`,
+                text: `Read and summarize the news article from the following URL in 3-5 key points. Always respond in English regardless of the article's language. Format each point as a plain numbered list (1. 2. 3.) without using any markdown symbols like asterisks (*), bold (**), or bullet points. Keep it clean and readable.\n\nURL: ${url}`,
               },
             ],
           },
         ],
         generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 500,
+          temperature: 0.5,
+          maxOutputTokens: 1000,
         },
       }),
     }
@@ -833,8 +833,40 @@ export default function Home() {
 
       {/* ─── Main Content ─── */}
       <main className="container-width" style={{ paddingTop: 32, paddingBottom: 20 }}>
-        {/* Title + Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5" style={{ marginBottom: 40 }}>
+        {/* Category Tabs — desktop (above title, like TabNavigation) */}
+        <div
+          className="desktop-only"
+          style={{ gap: 0, borderBottom: "1px solid var(--border-subtle)" }}
+        >
+          {CATEGORIES.map((cat) => {
+            const isActive = category === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setCategory(cat.key)}
+                style={{
+                  padding: "10px 20px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  fontFamily: "var(--font-sans)",
+                  transition: "all 0.2s ease",
+                  textAlign: "center",
+                  background: "transparent",
+                  color: isActive ? "#a78bfa" : "var(--text-tertiary)",
+                  borderBottom: isActive ? "2px solid #a78bfa" : "2px solid transparent",
+                  marginBottom: -1,
+                }}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 32, marginTop: 24 }}>
           {/* Category Dropdown — mobile (above title) */}
           <CategoryDropdown category={category} setCategory={setCategory} />
 
@@ -845,25 +877,6 @@ export default function Home() {
             <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
               Curated from 28 trusted sources
             </p>
-          </div>
-
-          {/* Category Tabs — desktop */}
-          <div
-            className="desktop-only items-center gap-1 p-1 rounded-xl"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setCategory(cat.key)}
-                className={`tab-btn ${category === cat.key ? "active" : ""}`}
-              >
-                {cat.label}
-              </button>
-            ))}
           </div>
         </div>
 
