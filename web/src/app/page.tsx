@@ -1,9 +1,24 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { supabase, type NewsItem } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import type { NewsItem } from "@/lib/supabase";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+type TweetSettings = {
+  includeHashtags: boolean;
+  includeLink: boolean;
+  temperature: number;
+  charLimit: number;
+};
+
+const DEFAULT_TWEET_SETTINGS: TweetSettings = {
+  includeHashtags: true,
+  includeLink: true,
+  temperature: 0.7,
+  charLimit: 280,
+};
 
 const NAV_LINKS = [
   { label: "Analytics", href: "/fear-greed", matchPaths: ["/fear-greed", "/altcoin-season", "/crypto-gems"] },
@@ -56,7 +71,18 @@ async function summarizeWithGemini(apiKey: string, url: string): Promise<string>
   );
 }
 
-async function generateTweetWithGemini(apiKey: string, title: string, url: string, summary: string): Promise<string> {
+async function generateTweetWithGemini(apiKey: string, title: string, url: string, summary: string, settings: TweetSettings): Promise<string> {
+  const hashtagRule = settings.includeHashtags
+    ? "Include relevant hashtags (2-3 max)."
+    : "Do NOT include any hashtags.";
+  const isCustom = settings.charLimit !== 280;
+  const charTarget = Math.max(settings.charLimit - 30, 100);
+
+  // Standard: tweet from summary only. Custom: read from article URL directly.
+  const promptText = isCustom
+    ? `Read this article and create an engaging, detailed tweet about it. The tweet should capture the key points directly from the article. ${hashtagRule} Do NOT include the article URL in the tweet. Keep it under ${charTarget} characters. Do not use any markdown formatting. Respond in the same language as the article title.\n\nArticle URL: ${url}\nTitle: ${title}`
+    : `Create a short, engaging tweet about this news article. The tweet should be concise, informative, and attention-grabbing. ${hashtagRule} Do NOT include the article URL. Keep it under ${charTarget} characters. Do not use any markdown formatting. Respond in the same language as the article title.\n\nTitle: ${title}\nSummary: ${summary}`;
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
     {
@@ -66,15 +92,13 @@ async function generateTweetWithGemini(apiKey: string, title: string, url: strin
         contents: [
           {
             parts: [
-              {
-                text: `Create a short, engaging tweet about this news article. The tweet should be concise, informative, and attention-grabbing. Include relevant hashtags (2-3 max). Do NOT include the article URL (it will be added automatically). Keep it under 250 characters. Do not use any markdown formatting. Respond in the same language as the article title.\n\nTitle: ${title}\nSummary: ${summary}\nURL: ${url}`,
-              },
+              { text: promptText },
             ],
           },
         ],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 200,
+          temperature: settings.temperature,
+          maxOutputTokens: isCustom ? 500 : 200,
         },
       }),
     }
@@ -114,18 +138,24 @@ function SettingsModal({
   onClose,
   apiKey,
   setApiKey,
+  tweetSettings,
+  setTweetSettings,
 }: {
   open: boolean;
   onClose: () => void;
   apiKey: string;
   setApiKey: (k: string) => void;
+  tweetSettings: TweetSettings;
+  setTweetSettings: (s: TweetSettings) => void;
 }) {
   const [inputVal, setInputVal] = useState(apiKey);
+  const [localTweet, setLocalTweet] = useState<TweetSettings>(tweetSettings);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setInputVal(apiKey);
-  }, [apiKey, open]);
+    setLocalTweet(tweetSettings);
+  }, [apiKey, tweetSettings, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,11 +171,11 @@ function SettingsModal({
   const handleSave = () => {
     const trimmed = inputVal.trim();
     setApiKey(trimmed);
-    if (trimmed) {
-      localStorage.setItem("gemini_api_key", trimmed);
-    } else {
-      localStorage.removeItem("gemini_api_key");
-    }
+    if (trimmed) localStorage.setItem("gemini_api_key", trimmed);
+    else localStorage.removeItem("gemini_api_key");
+
+    setTweetSettings(localTweet);
+    localStorage.setItem("tweet_settings", JSON.stringify(localTweet));
     onClose();
   };
 
@@ -156,63 +186,255 @@ function SettingsModal({
     onClose();
   };
 
+  const TEMP_PRESETS = [
+    { value: 0.3, label: "Precise" },
+    { value: 0.5, label: "Balanced" },
+    { value: 0.7, label: "Creative" },
+  ] as const;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: "85vh", overflowY: "auto" }}
       >
         <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
-          <h3 className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            ⚙️ Settings
-          </h3>
+          <h3 className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>Settings</h3>
           <button onClick={onClose} className="modal-close-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18" />
-              <path d="M6 6l12 12" />
+              <path d="M18 6L6 18" /><path d="M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <label
-          className="text-[12px] font-semibold"
-          style={{ color: "var(--text-secondary)", letterSpacing: "0.05em", textTransform: "uppercase" }}
-        >
+        {/* ── Gemini API Key ── */}
+        <label className="text-[12px] font-semibold" style={{ color: "var(--text-secondary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
           Gemini API Key
         </label>
-        <input
-          type="password"
-          value={inputVal}
-          onChange={(e) => setInputVal(e.target.value)}
-          placeholder="AIzaSy..."
-          className="settings-input"
-        />
+        <input type="password" value={inputVal} onChange={(e) => setInputVal(e.target.value)} placeholder="AIzaSy..." className="settings-input" />
         <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginTop: 8, lineHeight: 1.5 }}>
           Get your free API key from{" "}
-          <a
-            href="https://aistudio.google.com/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "var(--accent-hover)", textDecoration: "underline" }}
-          >
-            Google AI Studio
-          </a>
-          . Your key is stored locally in your browser and never sent to our server.
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-hover)", textDecoration: "underline" }}>Google AI Studio</a>.
+          Your key is stored locally and never sent to our server.
         </p>
 
+        {/* ── Tweet Settings (only show if API key is entered) ── */}
+        {inputVal.trim() && (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--text-secondary)" }}>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="text-[12px] font-semibold" style={{ color: "var(--text-secondary)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                Tweet Settings
+              </span>
+            </div>
+
+            {/* Include Hashtags */}
+            <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+              <div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>Include Hashtags</p>
+                <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginTop: 2 }}>Add 2-3 relevant hashtags to the tweet</p>
+              </div>
+              <button
+                onClick={() => setLocalTweet({ ...localTweet, includeHashtags: !localTweet.includeHashtags })}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
+                  background: localTweet.includeHashtags ? "#a78bfa" : "rgba(255,255,255,0.1)",
+                  position: "relative", transition: "background 0.2s",
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%", background: "white",
+                  position: "absolute", top: 3,
+                  left: localTweet.includeHashtags ? 21 : 3,
+                  transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
+
+            {/* Include Source Link */}
+            <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+              <div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>Include Source Link</p>
+                <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginTop: 2 }}>Append article URL when posting</p>
+              </div>
+              <button
+                onClick={() => setLocalTweet({ ...localTweet, includeLink: !localTweet.includeLink })}
+                style={{
+                  width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
+                  background: localTweet.includeLink ? "#a78bfa" : "rgba(255,255,255,0.1)",
+                  position: "relative", transition: "background 0.2s",
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%", background: "white",
+                  position: "absolute", top: 3,
+                  left: localTweet.includeLink ? 21 : 3,
+                  transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
+
+            {/* Temperature */}
+            <div style={{ marginBottom: 14 }}>
+              <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)", marginBottom: 8 }}>Tone</p>
+              <div className="flex items-center gap-2">
+                {TEMP_PRESETS.map((p) => {
+                  const isActive = localTweet.temperature === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      onClick={() => setLocalTweet({ ...localTweet, temperature: p.value })}
+                      style={{
+                        flex: 1,
+                        padding: "8px 0",
+                        borderRadius: 8,
+                        border: isActive ? "1px solid #a78bfa" : "1px solid var(--border-subtle)",
+                        background: isActive ? "rgba(167,139,250,0.12)" : "transparent",
+                        color: isActive ? "#a78bfa" : "var(--text-tertiary)",
+                        fontSize: 12,
+                        fontWeight: isActive ? 600 : 500,
+                        fontFamily: "var(--font-sans)",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginTop: 6, lineHeight: 1.4 }}>
+                Controls how creative the AI writes your tweet
+              </p>
+            </div>
+
+            {/* Character Limit */}
+            <div>
+              <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
+                <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>Character Limit</p>
+                <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                  {localTweet.charLimit === 280 ? "Default: 280" : `Custom: ${localTweet.charLimit}`}
+                </span>
+              </div>
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)", marginBottom: 8, lineHeight: 1.4 }}>
+                {localTweet.charLimit === 280
+                  ? "Tweet is generated from the article summary"
+                  : "Tweet is generated in more detail by reading directly from the article link"}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setLocalTweet({ ...localTweet, charLimit: 280 })}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    borderRadius: 8,
+                    border: localTweet.charLimit === 280 ? "1px solid #a78bfa" : "1px solid var(--border-subtle)",
+                    background: localTweet.charLimit === 280 ? "rgba(167,139,250,0.12)" : "transparent",
+                    color: localTweet.charLimit === 280 ? "#a78bfa" : "var(--text-tertiary)",
+                    fontSize: 12,
+                    fontWeight: localTweet.charLimit === 280 ? 600 : 500,
+                    fontFamily: "var(--font-sans)",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Standard
+                </button>
+                <button
+                  onClick={() => { if (localTweet.charLimit === 280) setLocalTweet({ ...localTweet, charLimit: 500 }); }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    borderRadius: 8,
+                    border: localTweet.charLimit !== 280 ? "1px solid #a78bfa" : "1px solid var(--border-subtle)",
+                    background: localTweet.charLimit !== 280 ? "rgba(167,139,250,0.12)" : "transparent",
+                    color: localTweet.charLimit !== 280 ? "#a78bfa" : "var(--text-tertiary)",
+                    fontSize: 12,
+                    fontWeight: localTweet.charLimit !== 280 ? 600 : 500,
+                    fontFamily: "var(--font-sans)",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Custom
+                </button>
+              </div>
+              {localTweet.charLimit !== 280 && (
+                <div style={{
+                  marginTop: 10,
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    borderRadius: 8,
+                    border: "1px solid var(--border-subtle)",
+                    overflow: "hidden",
+                  }}>
+                    <button
+                      onClick={() => setLocalTweet({ ...localTweet, charLimit: Math.max(281, localTweet.charLimit - 10) })}
+                      style={{
+                        width: 32, height: 32,
+                        border: "none",
+                        borderRight: "1px solid var(--border-subtle)",
+                        background: "transparent",
+                        color: "var(--text-tertiary)",
+                        fontSize: 16,
+                        cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "color 0.15s",
+                      }}
+                    >−</button>
+                    <input
+                      type="number"
+                      min="281" max="4000"
+                      value={localTweet.charLimit}
+                      onChange={(e) => setLocalTweet({ ...localTweet, charLimit: Math.max(281, Math.min(4000, parseInt(e.target.value) || 500)) })}
+                      style={{
+                        flex: 1,
+                        height: 32,
+                        border: "none",
+                        background: "transparent",
+                        color: "#a78bfa",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        fontFamily: "var(--font-mono, monospace)",
+                        textAlign: "center" as const,
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      onClick={() => setLocalTweet({ ...localTweet, charLimit: Math.min(4000, localTweet.charLimit + 10) })}
+                      style={{
+                        width: 32, height: 32,
+                        border: "none",
+                        borderLeft: "1px solid var(--border-subtle)",
+                        background: "transparent",
+                        color: "var(--text-tertiary)",
+                        fontSize: 16,
+                        cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "color 0.15s",
+                      }}
+                    >+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Save / Remove */}
         <div className="flex items-center gap-2" style={{ marginTop: 20 }}>
-          <button onClick={handleSave} className="settings-save-btn">
-            Save
-          </button>
+          <button onClick={handleSave} className="settings-save-btn">Save</button>
           {apiKey && (
-            <button onClick={handleRemove} className="settings-remove-btn">
-              Remove Key
-            </button>
+            <button onClick={handleRemove} className="settings-remove-btn">Remove Key</button>
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -225,12 +447,14 @@ function SummaryModal({
   item,
   apiKey,
   onOpenSettings,
+  tweetSettings,
 }: {
   open: boolean;
   onClose: () => void;
   item: NewsItem | null;
   apiKey: string;
   onOpenSettings: () => void;
+  tweetSettings: TweetSettings;
 }) {
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
@@ -283,7 +507,7 @@ function SummaryModal({
     setTweetLoading(true);
     setTweetError("");
     try {
-      const draft = await generateTweetWithGemini(apiKey, item.title, item.link, summary);
+      const draft = await generateTweetWithGemini(apiKey, item.title, item.link, summary, tweetSettings);
       setTweetDraft(draft.trim());
     } catch (e: unknown) {
       setTweetError(e instanceof Error ? e.message : "Failed to generate tweet");
@@ -294,7 +518,7 @@ function SummaryModal({
 
   const handlePostTweet = () => {
     if (!item) return;
-    const tweetText = `${tweetDraft}\n\n${item.link}`;
+    const tweetText = tweetSettings.includeLink ? `${tweetDraft}\n\n${item.link}` : tweetDraft;
     const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(twitterUrl, "_blank");
   };
@@ -408,8 +632,8 @@ function SummaryModal({
                   {tweetDraft}
                 </p>
                 <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
-                  <span className="text-[11px]" style={{ color: tweetDraft.length > 280 ? "#f87171" : "var(--text-tertiary)" }}>
-                    {tweetDraft.length}/280
+                  <span className="text-[11px]" style={{ color: tweetDraft.length > tweetSettings.charLimit ? "#f87171" : "var(--text-tertiary)" }}>
+                    {tweetDraft.length}/{tweetSettings.charLimit}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -427,7 +651,7 @@ function SummaryModal({
                         transition: "all 0.2s",
                       }}
                     >
-                      🔄 Regenerate
+                      Regenerate
                     </button>
                     <button
                       onClick={handlePostTweet}
@@ -717,6 +941,7 @@ export default function Home() {
   const [summaryItem, setSummaryItem] = useState<NewsItem | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tweetSettings, setTweetSettings] = useState<TweetSettings>(DEFAULT_TWEET_SETTINGS);
 
   const isNavActive = useCallback((link: typeof NAV_LINKS[0]) => {
     return link.matchPaths.some(p => pathname.startsWith(p));
@@ -724,10 +949,14 @@ export default function Home() {
 
   const newsRef = useRef<NewsItem[]>([]);
 
-  // Load API key from localStorage on mount
+  // Load API key + tweet settings from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("gemini_api_key");
     if (saved) setApiKey(saved);
+    const savedTweet = localStorage.getItem("tweet_settings");
+    if (savedTweet) {
+      try { setTweetSettings({ ...DEFAULT_TWEET_SETTINGS, ...JSON.parse(savedTweet) }); } catch { }
+    }
   }, []);
 
   const fetchPage = useCallback(async (from: number, cat: string) => {
@@ -818,6 +1047,8 @@ export default function Home() {
         onClose={() => setSettingsOpen(false)}
         apiKey={apiKey}
         setApiKey={setApiKey}
+        tweetSettings={tweetSettings}
+        setTweetSettings={setTweetSettings}
       />
       <SummaryModal
         open={summaryOpen}
@@ -825,6 +1056,7 @@ export default function Home() {
         item={summaryItem}
         apiKey={apiKey}
         onOpenSettings={() => setSettingsOpen(true)}
+        tweetSettings={tweetSettings}
       />
 
       {/* ─── Header ─── */}
